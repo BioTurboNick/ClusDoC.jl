@@ -71,3 +71,55 @@ function lr(neighbortree::NNTree, coordinates2::AbstractVector, radius, roiarea)
 
     return Lr, density # original returns Lr, indexes, displacement, and density
 end
+
+
+
+
+
+function doc()
+
+    # filter out those points with poor surrounding distributions
+    allcoordinates = [c.coordinates for c ∈ channels]
+    allneighbortree = BallTree(allcoordinates) # original uses KDTree, should compare
+    for c ∈ channels
+        n_r = number_r(allneighbortree, c.coordinates, lr_radius, true)
+        c.abovethreshold = n_r .> Lr_threshold
+    end
+
+    ch1tree = BallTree(channels[1].coordinates)
+    ch2tree = BallTree(channels[2].coordinates)
+
+    radii = (0:step:radiusmax) .+ step
+    n11_r = number_r.(Ref(channels[1].coordinates), ch1tree, radii, true)
+    n12_r = number_r.(Ref(channels[1].coordinates), ch2tree, radii, false)
+    n22_r = number_r.(Ref(channels[2].coordinates), ch2tree, radii, true)
+    n21_r = number_r.(Ref(channels[2].coordinates), ch1tree, radii, false)
+
+    radiusfactors = radiusmax ^ 2 ./ radii .^ 2
+    distribution11_r = (n11_r ./ n1_rmax) .* radiusfactors
+    distribution12_r = (n12_r ./ n1_rmax) .* radiusfactors
+    distribution22_r = (n22_r ./ n2_rmax) .* radiusfactors
+    distribution21_r = (n21_r ./ n2_rmax) .* radiusfactors
+
+    SA1 = corspearman.(N11, N12)
+    SA2 = corspearman.(N22, N21)
+end
+
+
+
+"""
+    distribution_r
+
+Calculate the distribution of points in `coordinates_to` around each point in `coordinates_from` for each radius in `radii`.
+"""
+function number_r(coordinates_from::AbstractVector, coordinates_to_tree::NNTree, radius, remove_self::Bool)
+    number_r = inrange(coordinates_to_tree, coordinates_from, radius)
+    if length(coordinates_from > 0) && remove_self
+        number_r .-= 1
+    end
+    distribution_r = (number_r ./ number_r[end]) .* (radii[end] ^ 2 / radii .^ 2)
+end
+
+
+
+
