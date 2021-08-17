@@ -53,24 +53,27 @@ function doc!(channels, localradius, radiusmax, step, roiarea)
     ctrees = BallTree.(c.coordinates for c ∈ channels)
     radiussteps = (1:ceil(radiusmax / step)) .* step
     for (i, c) ∈ enumerate(channels)
+        # determine which localizations have more neighbors than expected by chance
         ineighbors = inrange(allneighbortree, c.coordinates, radius, true)
         nneighbors = length.(ineighbors) .- 1 # remove self
         ntotal = length(allneighbortree) - 1 # remove self
         c.equivalentradius = equivalentradius.(nneighbors, ntotal, roiarea)
+        c.abovethreshold = c.equivalentradius .> localradius # maybe can replace with simple number threshold though, if don't need to compare across channels
         c.density = density.(nneighbors, localradius)
-        c.abovethreshold = c.equivalentradius .> localradius # maybe can replace with simple number threshold though?
 
+        # calculate density gradient for each point vs. neighbors in each other channel
         distributions = Vector(undef, length(channels))
         for j ∈ eachindex(channels)
             k = Int(i == j) # factor to remove self
-            dr = [(length.(inrange(ctrees[j], c.coordinates, r)) .- k) ./ r ^ 2 for r ∈ radiussteps]
+            dr = [(length.(inrange(ctrees[j], c.coordinates[c.abovethreshold], r)) .- k) ./ r ^ 2 for r ∈ radiussteps]
             distributions[j] = dr ./ dr[end]
         end
 
+        # compute degree of colocalization
         for j ∈ eachindex(channels)
             spearmancoefficient = corspearman.(c.distributions[i], distributions[j])
-            _, nearestdistance = nn.(ctrees[j], c.coordinates)
-            c.docscore = spearmancoefficient .* exp(-nearestdistance / radiussteps[end])
+            _, nearestdistance = nn.(ctrees[j], c.coordinates[c.abovethreshold])
+            c.docscore[j] = spearmancoefficient .* exp(-nearestdistance / radiussteps[end])
         end
     end
 
