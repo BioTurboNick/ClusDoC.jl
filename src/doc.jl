@@ -18,10 +18,18 @@ channels[2] = Channel(coordinates, nothing, nothing, nothing, nothing)
 
 
 
-# calculate degree of colocalization (DoC) scores
-function doc!(channels, localradius, radiusmax, step, roiarea)
+"""
+    doc!(channels::Vector{Channel}, localradius, radiusmax, radiusstep, roiarea)
+
+Calculate the degree of colocalization for all points in each channel against all other channels. Computes a density gradient
+within `radiusmax` of each point with steps of size `radiusstep`. `localradius` is used to select foreground points with more
+neighbors than expected by chance. Results are added to the `Channel` objects. 
+"""
+function doc!(channels, localradius, radiusmax, radiusstep, roiarea)
     0 < localradius < radiusmax ||
         throw(ArgumentError("$(:localradius) must be positive and less than $(:radiusmax); got $localradius, $radiusmax"))
+    0 < radiusstep < radiusmax ||
+        throw(ArgumentError("$(:radiusstep) must be positive and less than $(:radiusmax); got $radiuistep, $radiusmax"))
     π * radiusmax ^ 2 ≤ roiarea ||
         throw(ArgumentError("$(:radiusmax) must describe a circle with area smaller than $(:roiarea); got $radiusmax"))
 
@@ -34,39 +42,20 @@ function doc!(channels, localradius, radiusmax, step, roiarea)
        observed within the maximum radius for each point, multiplied by the maximum radius divided by the given radius.
     5. Spearman's rank correlation coefficient is calculated between the self-self neighbor distribution and the self-other
        neighbor distribution.
+    6. The coefficient is multipled by an exponential accounting for the distance to the nearest neighbor as a fraction of the
+       `radiusmax`.
     
-    The ClusDoC algorithm has an initial threshold step to decide which points to include in the calculation.
-    However, it seems to be broken; either the Lr calculation is producing too-high values, or the threshold is too low.
-    Essentially, all points that have any neighbors are above the threshold. I think what it is supposed to be is a calculation
-    of the number of points expected to be within Lr_radius of a point assuming all were evenly distributed across the ROI. And the
-    Lr for a single point would then just be the number of neighbors within Lr_radius of it. But the Lr calculation appears instead to
-    calculate the radius of a circle in which that fraction of points would be expected to appear, with the ROI area doubled. (holdover
-    from a previous iteration in which this value was the side of the ROI square?)
-
-    I *think* then that the threshold is really just the Lr_radius. Which is what the original code complained about.
+    There is an initial threshold step to ignore points that have fewer neighbors than expected based on a random
+    distrubtion across the ROI.
     =#
 
-
-
-    println("Segment clustered points from background...")
-
-    # This threshold was apparently simplified from a more convoluted one which
-    # a comment said basically equalled Lr_radius
-    # Lr_Threshold should be number of points within Lr_r for a random
-    # distrubution of the same number of points in the current ROI
-
-
-    # The threshold is the number of points that would fall within Lr_radius if randomly distributed over the ROI area.
-    # originally, this value was treated the same as the Lr function does.
     allcoordinates = reduce(hcat, c.coordinates for c ∈ channels)
-    
     allneighbortree = BallTree(allcoordinates) # original uses KDTree, should compare
     ctrees = BallTree.(c.coordinates for c ∈ channels)
-    radiussteps = (1:ceil(radiusmax / step)) .* step
+    radiussteps = (1:ceil(radiusmax / radiusstep)) .* radiusstep
     for (i, c) ∈ enumerate(channels)
         # determine which localizations have more neighbors than expected by chance
-        ineighbors = inrange(allneighbortree, c.coordinates, localradius, true)
-        nneighbors = length.(ineighbors) .- 1 # remove self
+        nneighbors = inrangecount(allneighbortree, c.coordinates, localradius, true)
         ntotal = size(allcoordinates, 2) - 1 # remove self
         c.equivalentradius = equivalentradius.(nneighbors, ntotal, roiarea)
         c.abovethreshold = c.equivalentradius .> localradius # maybe can replace with simple number threshold though, if don't need to compare across channels
@@ -76,8 +65,7 @@ function doc!(channels, localradius, radiusmax, step, roiarea)
         distributions = Vector(undef, length(channels))
         for j ∈ eachindex(channels)
             k = Int(i == j) # factor to remove self
-            # I think this is the major bottleneck*********************************************
-            dr = [(length.(inrange(ctrees[j], (@view c.coordinates[:, c.abovethreshold]), r)) .- k) ./ r ^ 2 for r ∈ radiussteps]
+            dr = [(inrangecount(ctrees[j], (@view c.coordinates[:, c.abovethreshold]), r) .- k) ./ r ^ 2 for r ∈ radiussteps]
             distributions[j] = hcat((drx ./ dr[end] for drx ∈ dr)...)
         end
 
