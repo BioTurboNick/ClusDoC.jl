@@ -1,10 +1,21 @@
 mutable struct Channel
     coordinates
-    Lr
-    allrelativedensity
+    density
+    equivalentradius
     abovethreshold
-    docscores
+    docscore
 end
+
+channel1pointsX = [28739.6, 29635, 28894.8, 29151.3, 28824.9, 29491.4, 29129.6, 29131.9, 28574.5, 29492.4, 29132.5,
+                       28580.6, 28561.3, 28577.5, 28739.6, 29633.5, 29131.6]
+channel1pointsY = [37181.4, 37849.4, 37446.7, 37957, 37026.1, 37287.2, 37786.3, 37959, 37558.8, 37309.7, 37771.8,
+                    37555, 37571.5, 37568.2, 37194.2, 37851.2, 37761]
+coordinates = repeat(permutedims([channel1pointsX channel1pointsY]), inner = (1, 1000))
+
+channels = Vector(undef, 2)
+channels[1] = Channel(coordinates, nothing, nothing, nothing, nothing)
+channels[2] = Channel(coordinates, nothing, nothing, nothing, nothing)
+
 
 
 # calculate degree of colocalization (DoC) scores
@@ -47,16 +58,16 @@ function doc!(channels, localradius, radiusmax, step, roiarea)
 
     # The threshold is the number of points that would fall within Lr_radius if randomly distributed over the ROI area.
     # originally, this value was treated the same as the Lr function does.
-    allcoordinates = [c.coordinates for c ∈ channels]
+    allcoordinates = reduce(hcat, c.coordinates for c ∈ channels)
     
     allneighbortree = BallTree(allcoordinates) # original uses KDTree, should compare
     ctrees = BallTree.(c.coordinates for c ∈ channels)
     radiussteps = (1:ceil(radiusmax / step)) .* step
     for (i, c) ∈ enumerate(channels)
         # determine which localizations have more neighbors than expected by chance
-        ineighbors = inrange(allneighbortree, c.coordinates, radius, true)
+        ineighbors = inrange(allneighbortree, c.coordinates, localradius, true)
         nneighbors = length.(ineighbors) .- 1 # remove self
-        ntotal = length(allneighbortree) - 1 # remove self
+        ntotal = size(allcoordinates, 2) - 1 # remove self
         c.equivalentradius = equivalentradius.(nneighbors, ntotal, roiarea)
         c.abovethreshold = c.equivalentradius .> localradius # maybe can replace with simple number threshold though, if don't need to compare across channels
         c.density = density.(nneighbors, localradius)
@@ -65,15 +76,17 @@ function doc!(channels, localradius, radiusmax, step, roiarea)
         distributions = Vector(undef, length(channels))
         for j ∈ eachindex(channels)
             k = Int(i == j) # factor to remove self
-            dr = [(length.(inrange(ctrees[j], c.coordinates[c.abovethreshold], r)) .- k) ./ r ^ 2 for r ∈ radiussteps]
-            distributions[j] = dr ./ dr[end]
+            # I think this is the major bottleneck*********************************************
+            dr = [(length.(inrange(ctrees[j], (@view c.coordinates[:, c.abovethreshold]), r)) .- k) ./ r ^ 2 for r ∈ radiussteps]
+            distributions[j] = hcat((drx ./ dr[end] for drx ∈ dr)...)
         end
 
         # compute degree of colocalization
+        c.docscore = Vector(undef, length(channels))
         for j ∈ eachindex(channels)
-            spearmancoefficient = corspearman.(c.distributions[i], distributions[j])
-            _, nearestdistance = nn.(ctrees[j], c.coordinates[c.abovethreshold])
-            c.docscore[j] = spearmancoefficient .* exp(-nearestdistance / radiussteps[end])
+            spearmancoefficient = [corspearman(distributions[i][k, :], distributions[j][k, :]) for k ∈ 1:count(c.abovethreshold)]
+            _, nearestdistance = nn(ctrees[j], c.coordinates[:, c.abovethreshold])
+            c.docscore[j] = spearmancoefficient .* exp.(-nearestdistance ./ radiussteps[end])
         end
     end
 
@@ -106,8 +119,7 @@ function equivalentradius(nneighbors::Int, ntotal::Int, roiarea) #Lr
     0 < ntotal ||
         throw(ArgumentError("$(:ntotal) must be positive; got $notal"))
     0 ≤ nneighbors ≤ ntotal ||
-        throw(ArgumentError("$(:nneighbors) and $(:ntotal) must be greater than or equal to zero, and $(:ntotal) must be greater \
-                             than or equal to $(:nneighbors); got $nneighbors, $ntotal"))
+        throw(ArgumentError("$(:nneighbors) and $(:ntotal) must be greater than or equal to zero, and $(:ntotal) must be greater than or equal to $(:nneighbors); got $nneighbors, $ntotal"))
     roiarea > 0 ||
         throw(ArgumentError("$(:roiarea) must be positive; got $roiarea"))
     fneighbors = nneighbors / ntotal
