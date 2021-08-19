@@ -4,6 +4,7 @@ mutable struct Channel
     equivalentradius
     abovethreshold
     docscore
+    clusters
 end
 
 channel1pointsX = [28739.6, 29635, 28894.8, 29151.3, 28824.9, 29491.4, 29129.6, 29131.9, 28574.5, 29492.4, 29132.5,
@@ -34,7 +35,7 @@ function doc!(channels, localradius, radiusmax, radiusstep, roiarea)
         throw(ArgumentError("$(:radiusmax) must describe a circle with area smaller than $(:roiarea); got $radiusmax"))
 
     #=
-    The algorithm for coordinate-based colocalization (10.1007/s00418-011-0880-5) is:
+    The algorithm for coordinate-based colocalization (doi: 10.1007/s00418-011-0880-5) is:
     1. For each localization, count the number of localizations (other than itself) within a given radius for each channel.
     2. Divide by the area examined to get the density for each radius and each point.
     3. For each point, divide by the density within the maximum radius for each point.
