@@ -11,8 +11,17 @@ Algorithm
 
                         =#
 
-function dbscan(channels::Vector{Channel})
+function dbscan(channels::Vector{Channel}, epsilon, minpoints, uselocalradius_threshold, localradius)
+
     for c ∈ channels
-        c.clusters = dbscan(coordinates, eps, minpts)
+        if uselocalradius_threshold
+            allcoordinates = reduce(hcat, c.coordinates for c ∈ channels)
+            allneighbortree = BallTree(allcoordinates)
+            nneighbors = inrangecount(allneighbortree, c.coordinates, localradius, true)
+            c.equivalentradius = equivalentradius.(nneighbors, ntotal, roiarea)
+            c.abovethreshold = c.equivalentradius .> localradius # maybe can replace with simple number threshold though, if don't need to compare across channels
+        end
+        
+        c.clusters = dbscan(coordinates, epsilon, minpoints)
     end
 end

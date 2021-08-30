@@ -6,6 +6,7 @@ version = "0.1.0"
 [deps]
 Clustering = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
 GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
+LocalizationMicroscopy = "798e6d30-19ab-11e9-36f8-37cfc5a8426e"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 NearestNeighbors = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
