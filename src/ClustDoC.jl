@@ -11,6 +11,7 @@ include("types/ChannelResult.jl")
 include("doc.jl")
 include("dbscan.jl")
 
+path = "test/nikontestdata.bin.txt"
 
 function clusdoc(path)
     # load file, allow selection of ROI, run algorithm with default parameters
