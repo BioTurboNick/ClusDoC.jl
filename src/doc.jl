@@ -31,12 +31,12 @@ function doc(localizations, localradius, radiusmax, radiusstep, roiarea)
     =#
 
     allcoordinates = reduce(hcat, c.coordinates for c ∈ channels)
-    allneighbortree = BallTree(allcoordinates) # original uses KDTree, should compare
+    allneighbortree = BallTree(allcoordinates) # original uses KDTree; I timed it and it is worse
     ctrees = BallTree.(c.coordinates for c ∈ channels)
     radiussteps = (1:ceil(radiusmax / radiusstep)) .* radiusstep
     for (i, c) ∈ enumerate(channels)
         # determine which localizations have more neighbors than expected by chance
-        nneighbors = NearestNeighbors.inrangecount(allneighbortree, c.coordinates, localradius, true)
+        nneighbors = inrangecount(allneighbortree, c.coordinates, localradius)
         ntotal = size(allcoordinates, 2) - 1 # remove self
         c.equivalentradius = equivalentradius.(nneighbors, ntotal, roiarea)
         c.abovethreshold = c.equivalentradius .> localradius # maybe can replace with simple number threshold though, if don't need to compare across channels
