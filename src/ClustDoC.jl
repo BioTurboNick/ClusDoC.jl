@@ -18,7 +18,8 @@ function clusdoc(path)
     locs = loadlocalizations(path, LocalizationMicroscopy.nikonelementstext)
     ch1locs = getlocalizations(locs, "488", 1, 11000, 100, 10)
     ch2locs = getlocalizations(locs, "647", 11001, 11000, 100, 10)
-    docscores = doc([ch1locs, ch2locs], 20, 500, 10, 40960*40960)
+    cr = doc([ch1locs, ch2locs], 20, 500, 10, 40960*40960)
+    dbscan!(cr, 0.5, )
 end
 
 #=
