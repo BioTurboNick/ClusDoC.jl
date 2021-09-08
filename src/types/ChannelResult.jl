@@ -1,8 +1,9 @@
 mutable struct ChannelResult
+    channelname
     coordinates
     density
     equivalentradius
     abovethreshold
-    docscore
+    docscores
     clusters
 end

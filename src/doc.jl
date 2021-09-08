@@ -1,3 +1,13 @@
+# channel1pointsX = [28739.6, 29635, 28894.8, 29151.3, 28824.9, 29491.4, 29129.6, 29131.9, 28574.5, 29492.4, 29132.5,
+#                        28580.6, 28561.3, 28577.5, 28739.6, 29633.5, 29131.6]
+# channel1pointsY = [37181.4, 37849.4, 37446.7, 37957, 37026.1, 37287.2, 37786.3, 37959, 37558.8, 37309.7, 37771.8,
+#                     37555, 37571.5, 37568.2, 37194.2, 37851.2, 37761]
+# coordinates = repeat(permutedims([channel1pointsX channel1pointsY]), inner = (1, 1000))
+
+# channels = Vector(undef, 2)
+# channels[1] = ChannelResult("test1", coordinates, nothing, nothing, nothing, nothing, nothing)
+# channels[2] = ChannelResult("test2", coordinates, nothing, nothing, nothing, nothing, nothing)
+
 """
     doc(channels::Vector{Channel}, localradius, radiusmax, radiusstep, roiarea)
 
@@ -5,7 +15,7 @@ Calculate the degree of colocalization for all points in each channel against al
 within `radiusmax` of each point with steps of size `radiusstep`. `localradius` is used to select foreground points with more
 neighbors than expected by chance. Results are added to the `Channel` objects. 
 """
-function doc(localizations, localradius, radiusmax, radiusstep, roiarea)
+function doc(channelnames, localizations, localradius, radiusmax, radiusstep, roiarea)
     0 < localradius < radiusmax ||
         throw(ArgumentError("$(:localradius) must be positive and less than $(:radiusmax); got $localradius, $radiusmax"))
     0 < radiusstep < radiusmax ||
@@ -13,7 +23,7 @@ function doc(localizations, localradius, radiusmax, radiusstep, roiarea)
     π * radiusmax ^ 2 ≤ roiarea ||
         throw(ArgumentError("$(:radiusmax) must describe a circle with area smaller than $(:roiarea); got $radiusmax"))
 
-    channels = ChannelResult.(extractcoordinates.(localizations), nothing, nothing, nothing, nothing, nothing)
+    channels = ChannelResult.(channelnames, extractcoordinates.(localizations), nothing, nothing, nothing, nothing, nothing)
     #=
     The algorithm for coordinate-based colocalization (doi: 10.1007/s00418-011-0880-5) is:
     1. For each localization, count the number of localizations (other than itself) within a given radius for each channel.
@@ -51,11 +61,11 @@ function doc(localizations, localradius, radiusmax, radiusstep, roiarea)
         end
 
         # compute degree of colocalization
-        c.docscore = Vector(undef, length(channels))
+        c.docscores = Vector(undef, length(channels))
         for j ∈ eachindex(channels)
             spearmancoefficient = [corspearman(distributions[i][k, :], distributions[j][k, :]) for k ∈ 1:count(c.abovethreshold)]
             _, nearestdistance = nn(ctrees[j], c.coordinates[:, c.abovethreshold])
-            c.docscore[j] = spearmancoefficient .* exp.(-nearestdistance ./ radiussteps[end])
+            c.docscores[j] = spearmancoefficient .* exp.(-nearestdistance ./ radiussteps[end])
         end
     end
 
