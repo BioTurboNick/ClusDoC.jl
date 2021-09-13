@@ -12,6 +12,7 @@ using XLSX
 include("src/types/ChannelResult.jl") # remove src
 include("src/doc.jl")
 include("src/dbscan.jl")
+include("src/smooth.jl")
 
 path = "test/realtest.bin.txt"
 outputpath = "output"
@@ -23,6 +24,7 @@ function clusdoc(path, outputpath)
     ch2locs = getlocalizations(locs, "647", 11001, 11000, 100, 10)
     cr = doc(["488", "647"], [ch1locs, ch2locs], 20, 500, 10, 40960*40960)
     dbscan!(cr, 20, 3, true, 20)
+    smooth!(cr)
     writeresultstables(cr, joinpath(outputpath, "ClusDoC Results.xlsx"))
     histogram(cr[1].docscores[2]) # contains NaNs, histogram ignores
     savefig(joinpath(outputpath, "ch1dochist.png"))
@@ -95,6 +97,8 @@ function writeresultstables(channels::Vector{ChannelResult}, path)
 
         clusterinfo_rowlength = 5
 
+        # I need to figure out the smoothing function first
+
         for (i, channel) ∈ enumerate(channels)
             XLSX.addsheet!(xf)
             sheet = xf[i + 1]
@@ -119,7 +123,8 @@ function writeresultstables(channels::Vector{ChannelResult}, path)
                 sheet[3, offset + 3] = "Circularity"
                 sheet[3, offset + 4] = "Relative density / granularity"
 
-                colocalized_indexes = findall(count(channel.docscores[j][c.size] .> 0.4) > 5 for c ∈ channel.clusters)
+                clusterpoints = union(c.core_indices, c.po)
+                colocalized_indexes = findall(count(channel.docscores[j][c.core_indices] .> 0.4) > 5 for c ∈ channel.clusters)
                 union!(all_colocalized_indexes, colocalized_indexes)
                 sheet[4, offset] = length(colocalized_indexes)
                 sizes = [c.size for c ∈ channel.clusters[colocalized_indexes]]
@@ -127,7 +132,8 @@ function writeresultstables(channels::Vector{ChannelResult}, path)
                 sheet[4, offset + 1] = isnan(meansize) ? "" : meansize
                 # sheet[3, offset + 2] = 
                 # sheet[3, offset + 3] = 
-                # sheet[3, offset + 4] = 
+                meandensities = [c.densities[c.] for c ∈ channel.clusters[colocalized_indexes]]
+                sheet[3, offset + 4] = 
 
                 k += 1
             end

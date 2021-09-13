@@ -50,7 +50,7 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
         ntotal = size(allcoordinates, 2) - 1 # remove self
         c.equivalentradius = equivalentradius.(nneighbors, ntotal, roiarea)
         c.abovethreshold = c.equivalentradius .> localradius # maybe can replace with simple number threshold though, if don't need to compare across channels
-        c.density = pointdensity.(nneighbors, localradius)
+        c.densities = pointdensity.(nneighbors, localradius)
 
         # calculate density gradient for each point vs. neighbors in each other channel
         distributions = Vector(undef, length(channels))

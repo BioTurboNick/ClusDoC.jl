@@ -1,7 +1,7 @@
 mutable struct ChannelResult
     channelname
     coordinates
-    density
+    densities
     equivalentradius
     abovethreshold
     docscores
