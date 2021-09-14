@@ -1,9 +1,10 @@
-module ClustDoC
+module ClusDoC
 
 using Clustering
 using InvertedIndices
 using Makie
 using Plots
+using LocalFilters
 using LocalizationMicroscopy
 using NearestNeighbors
 using StatsBase
@@ -24,7 +25,7 @@ function clusdoc(path, outputpath)
     ch2locs = getlocalizations(locs, "647", 11001, 11000, 100, 10)
     cr = doc(["488", "647"], [ch1locs, ch2locs], 20, 500, 10, 40960*40960)
     dbscan!(cr, 20, 3, true, 20)
-    smooth!(cr)
+    smooth!(cr, 20)
     writeresultstables(cr, joinpath(outputpath, "ClusDoC Results.xlsx"))
     histogram(cr[1].docscores[2]) # contains NaNs, histogram ignores
     savefig(joinpath(outputpath, "ch1dochist.png"))
