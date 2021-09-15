@@ -14,10 +14,10 @@ function smooth!(cr, epsilon)
         # create the grid
         boxes = [UnitRange.(floor.(bmin), ceil.(bmax)) for (bmin, bmax) ∈ zip(boxmins, boxmaxes)]
 
-        for (i, box) ∈ enumerate(boxes)
+        for (ii, box) ∈ enumerate(boxes)
             # create histogram of the cluster with a resolution of 1 unit
             bincounts = zeros(Int, length.(box)...) # opportunity for sparse matrix? But current base implementation only 2d
-            coords = clustercoordinates[i]
+            coords = clustercoordinates[ii]
             for k ∈ 1:size(coords, 2)
                 binindex = ()
                 for j ∈ 1:length(box)
@@ -34,10 +34,16 @@ function smooth!(cr, epsilon)
             clusimage = imfilter(bincounts, reshape(Ik, length(Ik), ntuple(x -> 1, Val(length(box) - 1))...))
             for d ∈ 2:length(box)
                 dims = (ntuple(x -> 1, Val(d - 1))..., length(Ik), ntuple(x -> 1, Val(length(box) - d))...)
-                clusimage = imfilter!(clusimage, bincounts, reshape(Ik, dims))
+                imfilter!(clusimage, clusimage, reshape(Ik, dims))
             end
 
             # create interpolation of the grid to assess value at the points (real positions)
+            itp = interpolate((box...,), clusimage, Gridded(Linear()))
+            intensities = [itp(p...) for p ∈ eachcol(coords)]
+            
+            # Choose the smallest contour taking all the points            
+            cutoff = min(intensities)
+            
             
         end
 

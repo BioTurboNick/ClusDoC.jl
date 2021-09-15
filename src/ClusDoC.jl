@@ -1,12 +1,12 @@
 module ClusDoC
 
 using Clustering
+using ImageFiltering
 using InvertedIndices
-using Makie
-using Plots
-using LocalFilters
 using LocalizationMicroscopy
+using Makie
 using NearestNeighbors
+using Plots
 using StatsBase
 using XLSX
 
