@@ -2,6 +2,7 @@ module ClusDoC
 
 using Clustering
 using ImageFiltering
+using Interpolations
 using InvertedIndices
 using LocalizationMicroscopy
 using Makie
