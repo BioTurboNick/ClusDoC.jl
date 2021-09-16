@@ -42,8 +42,22 @@ function smooth!(cr, epsilon)
             intensities = [itp(p...) for p ∈ eachcol(coords)]
             
             # Choose the smallest contour taking all the points            
-            cutoff = min(intensities)
+            cutoff = minimum(intensities)
+
+            # My attempt to keep this dimension-agnostic breaks here; no generic way to do contour/surface?
+            # take the biggest cluster
+            clusimage = @view clusimage[:, :, size(clusimage, 3) ÷ 2 + 1]
+            cc = Contour.contour(box[1], box[2], clusimage, cutoff)
+            points = [Point.(zip(coordinates(line)...)) for line ∈ Contour.lines(cc)]
+            area, maxline = findmax(area, points) # original implementation seems to choose "most points" as "biggest"
             
+            # perimeter circularity calculation
+            maxpoints = points[maxline]
+            dx = diff(first(p) for p ∈ maxpoints)
+            dy = diff(last(p) for p ∈ maxpoints)
+            perimeter = sum(sqrt(dx .^ 2 + dy .^ 2))
+            circularity = 4 * π * area / (perimeter ^ 2)
+
             
         end
 

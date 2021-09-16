@@ -1,6 +1,7 @@
 module ClusDoC
 
 using Clustering
+using Contour
 using ImageFiltering
 using Interpolations
 using InvertedIndices
