@@ -1,8 +1,10 @@
-function smooth!(cr, epsilon)
-    for (i, c) ∈ enumerate(cr)
-        Nb = [cluster.size for cluster ∈ c.clusters]
-        sigmas = 15 # Smothing Radius parameter, default is 15 in original
-        clustercoordinates = [@view c.coordinates[:, union(cluster.core_indices, cluster.boundary_indices)] for cluster ∈ c.clusters]
+
+# huge memory usage here, and taking a long time.
+function smooth!(cr, epsilon, smoothingradius)
+    for (i, cc) ∈ enumerate(cr)
+        cc.clusternpoints = [cluster.size for cluster ∈ cc.clusters]
+        sigmas = smoothingradius
+        clustercoordinates = [@view cc.coordinates[:, union(cluster.core_indices, cluster.boundary_indices)] for cluster ∈ cc.clusters]
         bounds =  extrema.(clustercoordinates, dims = 2)
         lengths = [last.(b) .- first.(b) for b in bounds]
         boxsizes = 0.5 .* maximum.(lengths) .+ (epsilon + 10)
@@ -14,6 +16,12 @@ function smooth!(cr, epsilon)
         # create the grid
         boxes = [UnitRange.(floor.(bmin), ceil.(bmax)) for (bmin, bmax) ∈ zip(boxmins, boxmaxes)]
 
+        cc.clusterboxes = boxes
+        cc.clusterimages = Vector{Any}(undef, length(boxes))
+        cc.clusterareas = Vector{Float64}(undef, length(boxes))
+        cc.clustercircularities = Vector{Float64}(undef, length(boxes))
+        cc.clustercontours = Vector{Any}(undef, length(boxes))
+        cc.clustercutoffpoints = Vector{Float64}(undef, length(boxes))
         for (ii, box) ∈ enumerate(boxes)
             # create histogram of the cluster with a resolution of 1 unit
             bincounts = zeros(Int, length.(box)...) # opportunity for sparse matrix? But current base implementation only 2d
@@ -44,23 +52,40 @@ function smooth!(cr, epsilon)
             # Choose the smallest contour taking all the points            
             cutoff = minimum(intensities)
 
-            # My attempt to keep this dimension-agnostic breaks here; no generic way to do contour/surface?
+            #=
+            # Potential 3d code (start, anyway)
+            points, _ = isosurface(clusimage, MarchingCubes(iso = cutoff))
+            unique!(points)
+            offset = size(clusimage) ./ 2
+            midxypoints = filter(x -> x[3] == 0.0, points)
+            # note: points are unsorted
+
+            midxypoints = reduce(hcat, midxypoints)
+            
+            midxypoints .*= offset
+            midxypoints .+= offset
+
+            =#
+
+            # My attempt to keep this dimension-agnostic breaks here; no generic way to do contour/surface? Look into MDBM.jl
             # take the biggest cluster
             clusimage = @view clusimage[:, :, size(clusimage, 3) ÷ 2 + 1]
-            cc = Contour.contour(box[1], box[2], clusimage, cutoff)
-            points = [Point.(zip(coordinates(line)...)) for line ∈ Contour.lines(cc)]
-            area, maxline = findmax(area, points) # original implementation seems to choose "most points" as "biggest"
+            contour = Contour.contour(box[1], box[2], clusimage, cutoff)
+            points = [Point.(zip(coordinates(line)...)) for line ∈ Contour.lines(contour)]
+            contourarea, maxline = findmax([PolygonOps.area(pts) for pts ∈ points]) # original implementation chooses largest perimeter
             
             # perimeter circularity calculation
             maxpoints = points[maxline]
-            dx = diff(first(p) for p ∈ maxpoints)
-            dy = diff(last(p) for p ∈ maxpoints)
-            perimeter = sum(sqrt(dx .^ 2 + dy .^ 2))
-            circularity = 4 * π * area / (perimeter ^ 2)
+            dx = diff([first(p) for p ∈ maxpoints])
+            dy = diff([last(p) for p ∈ maxpoints])
+            perimeter = sum(sqrt.(dx .^ 2 + dy .^ 2))
+            circularity = 4 * π * contourarea / (perimeter ^ 2)
 
-            
+            cc.clusterimages[ii] = clusimage
+            cc.clusterareas[ii] = contourarea
+            cc.clustercircularities[ii] = circularity
+            cc.clustercontours[ii] = contour
+            cc.clustercutoffpoints[ii] = cutoff
         end
-
-        
     end
 end
