@@ -5,6 +5,11 @@ function smooth!(cr, epsilon, smoothingradius)
         cc.clusternpoints = [cluster.size for cluster ∈ cc.clusters]
         sigmas = smoothingradius
         clustercoordinates = [@view cc.coordinates[:, union(cluster.core_indices, cluster.boundary_indices)] for cluster ∈ cc.clusters]
+        is2d = any((@view clustercoordinates[3, :]) .!= 0)
+        if is2d
+            clustercoordinates = [@view cluster[1:2, :] for cluster ∈ clustercoordinates]
+        end
+        # NOTE: Currently, 3d may result in OOM errors
         bounds =  extrema.(clustercoordinates, dims = 2)
         lengths = [last.(b) .- first.(b) for b in bounds]
         boxsizes = 0.5 .* maximum.(lengths) .+ (epsilon + 10)
@@ -40,6 +45,7 @@ function smooth!(cr, epsilon, smoothingradius)
             aux1 = LinRange(-q * sigmas, q * sigmas, nbinpoints) # x ^ 2
             Ik = exp.(-aux1 .^ 2 / (2 * sigmas ^ 2)) # exp( - (x ^ 2 + y ^ 2) / (2 * sigma ^ 2) )
             clusimage = imfilter(bincounts, reshape(Ik, length(Ik), ntuple(x -> 1, Val(length(box) - 1))...))
+
             for d ∈ 2:length(box)
                 dims = (ntuple(x -> 1, Val(d - 1))..., length(Ik), ntuple(x -> 1, Val(length(box) - d))...)
                 imfilter!(clusimage, clusimage, reshape(Ik, dims))
