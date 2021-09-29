@@ -21,7 +21,6 @@ function smooth!(cr, epsilon, smoothingradius)
         # create the grid
         boxes = [UnitRange.(floor.(bmin), ceil.(bmax)) for (bmin, bmax) ∈ zip(boxmins, boxmaxes)]
 
-        cc.clusterboxes = boxes
         cc.clusterareas = Vector{Float64}(undef, length(boxes))
         cc.clustercircularities = Vector{Float64}(undef, length(boxes))
         cc.clustercontours = Vector{Any}(undef, length(boxes))
