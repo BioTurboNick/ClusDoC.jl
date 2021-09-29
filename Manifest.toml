@@ -2,7 +2,7 @@
 
 [[AbstractFFTs]]
 deps = ["LinearAlgebra"]
-git-tree-sha1 = "485ee0867925449198280d4af84bdb46a2a404d0"
+path = "C:\\Users\\ncb20\\.julia\\dev\\AbstractFFTs"
 uuid = "621f4979-c628-5d54-868e-fcf4e3e8185c"
 version = "1.0.1"
 
@@ -259,7 +259,7 @@ version = "0.3.1"
 
 [[FFTW]]
 deps = ["AbstractFFTs", "FFTW_jll", "LinearAlgebra", "MKL_jll", "Preferences", "Reexport"]
-git-tree-sha1 = "463cb335fa22c4ebacfd1faba5fde14edb80d96c"
+path = "C:\\Users\\ncb20\\.julia\\dev\\FFTW"
 uuid = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
 version = "1.4.5"
 

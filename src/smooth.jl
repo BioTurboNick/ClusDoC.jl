@@ -10,11 +10,11 @@ function smooth!(cr, epsilon, smoothingradius)
             clustercoordinates = [@view cluster[1:2, :] for cluster ∈ clustercoordinates]
         end
         # NOTE: Currently, 3d may result in OOM errors
-        bounds =  extrema.(clustercoordinates, dims = 2)
-        lengths = [last.(b) .- first.(b) for b in bounds]
+        bounds1 =  extrema.(clustercoordinates, dims = 2)
+        lengths = [last.(b) .- first.(b) for b in bounds1]
         boxsizes = 0.5 .* maximum.(lengths) .+ (epsilon + 10)
 
-        centers = [(last.(b) .+ first.(b)) ./ 2 for b ∈ bounds]
+        centers = [(last.(b) .+ first.(b)) ./ 2 for b ∈ bounds1]
         boxmins = [cen .- bs for (cen, bs) ∈ zip(centers, boxsizes)]
         boxmaxes = [cen .+ bs for (cen, bs) ∈ zip(centers, boxsizes)]
 
@@ -22,19 +22,17 @@ function smooth!(cr, epsilon, smoothingradius)
         boxes = [UnitRange.(floor.(bmin), ceil.(bmax)) for (bmin, bmax) ∈ zip(boxmins, boxmaxes)]
 
         cc.clusterboxes = boxes
-        cc.clusterimages = Vector{Any}(undef, length(boxes))
         cc.clusterareas = Vector{Float64}(undef, length(boxes))
         cc.clustercircularities = Vector{Float64}(undef, length(boxes))
         cc.clustercontours = Vector{Any}(undef, length(boxes))
-        cc.clustercutoffpoints = Vector{Float64}(undef, length(boxes))
         for (ii, box) ∈ enumerate(boxes)
             # create histogram of the cluster with a resolution of 1 unit
             bincounts = zeros(Int, length.(box)...) # opportunity for sparse matrix? But current base implementation only 2d
-            coords = clustercoordinates[ii]
-            for k ∈ 1:size(coords, 2)
+            coords1 = clustercoordinates[ii]
+            for k ∈ 1:size(coords1, 2)
                 binindex = ()
                 for j ∈ 1:length(box)
-                    binindex = (binindex..., findfirst(t -> t > coords[j, k], box[j]))
+                    binindex = (binindex..., findfirst(t -> t > coords1[j, k], box[j]))
                 end
                 bincounts[binindex...] += 1
             end
@@ -53,7 +51,7 @@ function smooth!(cr, epsilon, smoothingradius)
 
             # create interpolation of the grid to assess value at the points (real positions)
             itp = interpolate((box...,), clusimage, Gridded(Linear()))
-            intensities = [itp(p...) for p ∈ eachcol(coords)]
+            intensities = [itp(p...) for p ∈ eachcol(coords1)]
             
             # Choose the smallest contour taking all the points            
             cutoff = minimum(intensities)
@@ -70,7 +68,6 @@ function smooth!(cr, epsilon, smoothingradius)
             
             midxypoints .*= offset
             midxypoints .+= offset
-
             =#
 
             # My attempt to keep this dimension-agnostic breaks here; no generic way to do contour/surface? Look into MDBM.jl
@@ -87,11 +84,9 @@ function smooth!(cr, epsilon, smoothingradius)
             perimeter = sum(sqrt.(dx .^ 2 + dy .^ 2))
             circularity = 4 * π * contourarea / (perimeter ^ 2)
 
-            cc.clusterimages[ii] = clusimage
             cc.clusterareas[ii] = contourarea
             cc.clustercircularities[ii] = circularity
             cc.clustercontours[ii] = contour
-            cc.clustercutoffpoints[ii] = cutoff
         end
     end
 end

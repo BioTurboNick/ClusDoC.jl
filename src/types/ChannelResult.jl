@@ -7,12 +7,9 @@ mutable struct ChannelResult
     docscores
     clusters
     clusternpoints
-    clusterimages
     clusterareas
     clustercircularities
     clustercontours
-    clusterboxes
-    clustercutoffpoints
 end
 
 ChannelResult(a, b, c, d, e, f, g) =

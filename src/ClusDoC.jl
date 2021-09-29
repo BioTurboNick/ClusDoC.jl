@@ -6,17 +6,17 @@ using ImageFiltering
 using Interpolations
 using InvertedIndices
 using LocalizationMicroscopy
-using Makie
+#using Makie
 using NearestNeighbors
 using Plots
 using PolygonOps
 using StatsBase
 using XLSX
 
-include("src/types/ChannelResult.jl") # remove src
-include("src/doc.jl")
-include("src/dbscan.jl")
-include("src/smooth.jl")
+include("types/ChannelResult.jl") # remove src
+include("doc.jl")
+include("dbscan.jl")
+include("smooth.jl")
 
 path = "test/realtest.bin.txt"
 outputpath = "output"
@@ -29,7 +29,8 @@ function clusdoc(path, outputpath)
     cr = doc(["488", "647"], [ch1locs, ch2locs], 20, 500, 10, 40960*40960)
     dbscan!(cr, 20, 3, true, 20)
     smooth!(cr, 20, 15)
-    writeresultstables(cr, joinpath(outputpath, "ClusDoC Results.xlsx"))
+    #writeresultstables(cr, joinpath(outputpath, "ClusDoC Results.xlsx"))
+    mkpath(outputpath)
     histogram(cr[1].docscores[2]) # contains NaNs, histogram ignores
     savefig(joinpath(outputpath, "ch1dochist.png"))
     histogram(cr[2].docscores[1])
@@ -84,74 +85,72 @@ function getlocalizations(alllocalizations::Vector{Localization}, channelname, s
     localizations = filter(l -> l.channel == channelname, alllocalizations)
 end
 
-function writeresultstables(channels::Vector{ChannelResult}, path)
-    XLSX.openxlsx(path, mode = "w") do xf
-        sheet = xf[1]
-        XLSX.rename!(sheet, "DoC Results")
-        sheet["A1"] = "Percentage of colocalized molecules"
-        sheet["A2"] = "from\\to"
-        sheet["A3", dim = 1] = [cr.channelname for cr ∈ channels]
-        sheet["B2"] = [cr.channelname for cr ∈ channels]
-        for (i, cr) ∈ enumerate(channels)
-            for j ∈ eachindex(channels)
-                i == j && continue
-                sheet[2 + j, 1 + i] = count(cr.docscores[j] .> 0.4) / length(cr.docscores[j])
-            end
-        end
+# function writeresultstables(channels::Vector{ChannelResult}, path)
+#     XLSX.openxlsx(path, mode = "w") do xf
+#         sheet = xf[1]
+#         XLSX.rename!(sheet, "DoC Results")
+#         sheet["A1"] = "Percentage of colocalized molecules"
+#         sheet["A2"] = "from\\to"
+#         sheet["A3", dim = 1] = [cr.channelname for cr ∈ channels]
+#         sheet["B2"] = [cr.channelname for cr ∈ channels]
+#         for (i, cr) ∈ enumerate(channels)
+#             for j ∈ eachindex(channels)
+#                 i == j && continue
+#                 sheet[2 + j, 1 + i] = count(cr.docscores[j] .> 0.4) / length(cr.docscores[j])
+#             end
+#         end
 
-        clusterinfo_rowlength = 5
+#         clusterinfo_rowlength = 5
 
-        # I need to figure out the smoothing function first
+#         for (i, channel) ∈ enumerate(channels)
+#             XLSX.addsheet!(xf)
+#             sheet = xf[i + 1]
+#             XLSX.rename!(sheet, "Clus-DoC Results $(channel.channelname)")
+#             sheet["A1"] = "Properties of clusters by type"
+#             sheet["A2"] = "Noncolocalized"
+#             sheet["A3"] = "Number of clusters"
+#             sheet["B3"] = "Number of localizations per cluster"
+#             sheet["C3"] = "Area"
+#             sheet["D3"] = "Circularity"
+#             sheet["E3"] = "Relative density / granularity"
 
-        for (i, channel) ∈ enumerate(channels)
-            XLSX.addsheet!(xf)
-            sheet = xf[i + 1]
-            XLSX.rename!(sheet, "Clus-DoC Results $(channel.channelname)")
-            sheet["A1"] = "Properties of clusters by type"
-            sheet["A2"] = "Noncolocalized"
-            sheet["A3"] = "Number of clusters"
-            sheet["B3"] = "Number of localizations per cluster"
-            sheet["C3"] = "Area"
-            sheet["D3"] = "Circularity"
-            sheet["E3"] = "Relative density / granularity"
+#             all_colocalized_indexes = []
+#             k = 1
+#             for (j, channel2) ∈ enumerate(channels)
+#                 i == j && continue
+#                 offset = clusterinfo_rowlength * k + 1
+#                 sheet[2, offset] = "Colocalized with $(channel2.channelname)"
+#                 sheet[3, offset] = "Number of clusters"
+#                 sheet[3, offset + 1] = "Number of localizations per cluster"
+#                 sheet[3, offset + 2] = "Area"
+#                 sheet[3, offset + 3] = "Circularity"
+#                 sheet[3, offset + 4] = "Relative density / granularity"
 
-            all_colocalized_indexes = []
-            k = 1
-            for (j, channel2) ∈ enumerate(channels)
-                i == j && continue
-                offset = clusterinfo_rowlength * k + 1
-                sheet[2, offset] = "Colocalized with $(channel2.channelname)"
-                sheet[3, offset] = "Number of clusters"
-                sheet[3, offset + 1] = "Number of localizations per cluster"
-                sheet[3, offset + 2] = "Area"
-                sheet[3, offset + 3] = "Circularity"
-                sheet[3, offset + 4] = "Relative density / granularity"
+#                 clusterpoints = union(c.core_indices, c.po)
+#                 colocalized_indexes = findall(count(channel.docscores[j][c.core_indices] .> 0.4) > 5 for c ∈ channel.clusters)
+#                 union!(all_colocalized_indexes, colocalized_indexes)
+#                 sheet[4, offset] = length(colocalized_indexes)
+#                 sizes = [c.size for c ∈ channel.clusters[colocalized_indexes]]
+#                 meansize = mean(sizes)
+#                 sheet[4, offset + 1] = isnan(meansize) ? "" : meansize
+#                 # sheet[3, offset + 2] = 
+#                 # sheet[3, offset + 3] = 
+#                 meandensities = [c.densities[c.] for c ∈ channel.clusters[colocalized_indexes]]
+#                 sheet[3, offset + 4] = 
 
-                clusterpoints = union(c.core_indices, c.po)
-                colocalized_indexes = findall(count(channel.docscores[j][c.core_indices] .> 0.4) > 5 for c ∈ channel.clusters)
-                union!(all_colocalized_indexes, colocalized_indexes)
-                sheet[4, offset] = length(colocalized_indexes)
-                sizes = [c.size for c ∈ channel.clusters[colocalized_indexes]]
-                meansize = mean(sizes)
-                sheet[4, offset + 1] = isnan(meansize) ? "" : meansize
-                # sheet[3, offset + 2] = 
-                # sheet[3, offset + 3] = 
-                meandensities = [c.densities[c.] for c ∈ channel.clusters[colocalized_indexes]]
-                sheet[3, offset + 4] = 
+#                 k += 1
+#             end
 
-                k += 1
-            end
-
-            noncolocalized_indexes = Not(all_colocalized_indexes)            
-            sheet["A4"] = length(channel.clusters) - length(all_colocalized_indexes)
-            sizes = [c.size for c ∈ channel.clusters[noncolocalized_indexes]]
-            meansize = mean(sizes)
-            sheet["B4"] = isnan(meansize) ? "" : meansize
-            # # sheet[3, offset + 2] = 
-            # # sheet[3, offset + 3] = 
-            # # sheet[3, offset + 4] = 
-        end
-    end
-end
+#             noncolocalized_indexes = Not(all_colocalized_indexes)            
+#             sheet["A4"] = length(channel.clusters) - length(all_colocalized_indexes)
+#             sizes = [c.size for c ∈ channel.clusters[noncolocalized_indexes]]
+#             meansize = mean(sizes)
+#             sheet["B4"] = isnan(meansize) ? "" : meansize
+#             # # sheet[3, offset + 2] = 
+#             # # sheet[3, offset + 3] = 
+#             # # sheet[3, offset + 4] = 
+#         end
+#     end
+#end
 
 end # module
