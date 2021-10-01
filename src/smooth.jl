@@ -74,8 +74,8 @@ function smooth!(cr, epsilon, smoothingradius)
             clusimage = @view clusimage[:, :, size(clusimage, 3) ÷ 2 + 1]
             contour = Contour.contour(box[1], box[2], clusimage, cutoff)
             points = [Point.(zip(coordinates(line)...)) for line ∈ Contour.lines(contour)]
-            contourarea, maxline = findmax([PolygonOps.area(pts) for pts ∈ points]) # original implementation chooses largest perimeter
-            
+            contourarea, maxline = findmax([abs(PolygonOps.area(pts)) for pts ∈ points]) # original implementation chooses largest perimeter; # abs needed for now until fix made to PolygonOps
+
             # perimeter circularity calculation
             maxpoints = points[maxline]
             dx = diff([first(p) for p ∈ maxpoints])
@@ -85,7 +85,7 @@ function smooth!(cr, epsilon, smoothingradius)
 
             cc.clusterareas[ii] = contourarea
             cc.clustercircularities[ii] = circularity
-            cc.clustercontours[ii] = contour
+            cc.clustercontours[ii] = points[maxline]
         end
     end
 end
