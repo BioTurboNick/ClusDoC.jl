@@ -6,9 +6,10 @@ using ImageFiltering
 using Interpolations
 using InvertedIndices
 using LocalizationMicroscopy
-#using Makie
+using Makie
+using WGLMakie
 using NearestNeighbors
-using Plots
+#using Plots
 using PolygonOps
 using StatsBase
 using XLSX
@@ -26,6 +27,30 @@ function clusdoc(path, outputpath)
     locs = loadlocalizations(path, LocalizationMicroscopy.nikonelementstext)
     ch1locs = getlocalizations(locs, "488", 1, 11000, 100, 10)
     ch2locs = getlocalizations(locs, "647", 11001, 11000, 100, 10)
+
+    p = Makie.scatter(extractcoordinates(ch1locs)[1, :], extractcoordinates(ch1locs)[2, :], color = :green, markersize = 2, aspectratio =)
+    Makie.scatter!(p, extractcoordinates(ch2locs)[1, :], extractcoordinates(ch2locs)[2, :], color = :green)
+    clicks = Node(Point2f0[(0, 0)])
+    on(events(p).mousebutton, priority = 0) do event
+        if event.action == Mouse.press && event.button == Mouse.left
+            pos = AbstractPlotting.mouseposition(p)
+            push!(clicks, push!(clicks[], pos))
+        end
+    end
+    Makie.scatter!(p, clicks, color = :black, marker = '+', markersize = 20, show_axis = false)
+    RecordEvents(p, "roi_drawing")
+
+    # on(events(p).mousebutton, priority = 0) do buttons
+    #     if ispressed(p, Mouse.left)
+    #         pos = AbstractPlotting.mouseposition(p)
+    #         push!(clicks, push!(clicks[], pos))
+    #     end
+    #     return
+    # end
+    # scatter!(p, clicks, color = :red, marker = '+', markersize = 20, show_axis = false)
+    # RecordEvents(p, "roi_drawing")
+    # p
+
     cr = doc(["488", "647"], [ch1locs, ch2locs], 20, 500, 10, 40960*40960)
     dbscan!(cr, 20, 3, true, 20)
     smooth!(cr, 20, 15)
