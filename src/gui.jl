@@ -1,48 +1,46 @@
-using Gtk, Gtk.ShortNames, GtkReactive, NativeFileDialog
-
-function connect_button(btnwidget, handler)
-    btn = button(widget = btnwidget)
-    preserve(map(btn) do _
-        is_initializing && return
-        handler()
-    end)
-end
-
-function connect_entry(txtwidget, signal::Signal{String})
-    textbox(String; widget = txtwidget, signal)
-    return nothing
-end
-
-function connect_entry(txtwidget, signal::Signal{Vector{String}})
-    txtsig = preserve(map(signal) do sig
-        # format paths
-        is_initializing && return ""
-        return "\"" * join(sig, "\" \"") * "\""
-    end)
-    tb = textbox(String; widget = txtwidget, signal = txtsig)
-    preserve(map(tb) do sig
-        # parse input file list
-        is_initializing && return String[]
-        println("parsing $sig")
-        return String[]
-    end)
-end
-
-is_initializing = true
+using Gtk, Gtk.ShortNames, GtkObservables, NativeFileDialog
 
 b = GtkBuilder(filename="gui/clusdoc.glade")
 
 win = b["mainwin"]
 showall(win)
 
-inputfiles = Signal([""])
-connect_button(b["inputbtn"], () -> push!(inputfiles, pick_multi_file()))
-connect_entry(b["inputtxt"], inputfiles)
+inputfolder = Observable("")
+inputfiles = Observable([""])
+on(button(widget = b["inputbtn"])) do _
+    files = pick_multi_file()
+    if length(files) > 0
+        inputfiles[] = files
+    end
+end
+inputtxt = textbox(String; widget = b["inputtxt"])
+on(inputfiles) do obs
+    if length(obs) > 0
+        txt = "\"" * join(obs, "\" \"") * "\""
+    else
+        txt = ""
+    end
+    if txt != inputtxt[]
+        inputtxt[] = txt
+    end
+end
+on(inputtxt) do obs
+    files = filter!(x -> !contains(x, r"^\s*$"), split(obs, "\"", keepempty = false))
+    if files != inputfiles[]
+        inputfiles[] = files
+    end
+end
 
-outputfolder = Signal("")
-connect_button(b["outputbtn"], () -> push!(outputfolder, pick_folder()))
-connect_entry(b["outputtxt"], outputfolder)
+outputfolder = Observable("")
+on(button(widget = b["outputbtn"])) do _
+    outputfolder[] = pick_folder()
+end
+textbox(String; widget = b["outputtxt"], observable = outputfolder)
 
+selectedfile = Observable("")
+on(inputfiles) do obs
+    dropdown(basename.(obs), widget = b["fileselector"], observable = selectedfile)
+end
 
 
 filebox2 = Box(:h)
