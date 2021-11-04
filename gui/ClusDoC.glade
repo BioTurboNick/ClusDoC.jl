@@ -266,15 +266,17 @@
               </packing>
             </child>
             <child>
-              <object class="GtkImage" id="fileviewer">
+              <object class="GtkViewport" id="canvasbox">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="stock">gtk-missing-image</property>
+                <property name="shadow_type">none</property>
+                <child>
+                  <placeholder/>
+                </child>
               </object>
               <packing>
                 <property name="expand">True</property>
                 <property name="fill">True</property>
-                <property name="padding">2</property>
                 <property name="position">1</property>
               </packing>
             </child>

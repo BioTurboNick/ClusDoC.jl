@@ -1,9 +1,10 @@
-using Gtk, Gtk.ShortNames, GtkObservables, NativeFileDialog
+using Gtk, Gtk.ShortNames, GtkObservables, NativeFileDialog, GR, Printf, LocalizationMicroscopy
 
 b = GtkBuilder(filename="gui/clusdoc.glade")
+canvas = Canvas(500, 500)
+push!(b["canvasbox"], canvas)
 
 win = b["mainwin"]
-showall(win)
 
 inputfolder = Observable("")
 inputfiles = Observable([""])
@@ -51,59 +52,37 @@ on(fileselector) do obs
     selectedfile[] = obs !== nothing ? inputfiles[][findfirst(x -> basename(x) == obs, inputfiles[])] : nothing
 end
 
+selectedlocs = Observable((Matrix{Float64}(undef, 2, 0), Matrix{Float64}(undef, 2, 0)))
+
+function getlocalizations(alllocalizations::Vector{Localization}, channelname, startframe, nframes,
+    starttrimframes, endtrimframes)
+
+    lowerlimit = startframe + starttrimframes
+    upperlimit = startframe + nframes - endtrimframes - 1 # activate these limits
+
+    localizations = filter(l -> l.channel == channelname, alllocalizations)
+end
+
 on(selectedfile) do obs
     obs === nothing && return
     locs = loadlocalizations(obs, LocalizationMicroscopy.nikonelementstext)
-    ch1locs = getlocalizations(locs, "488", 1, 11000, 100, 10)
-    ch2locs = getlocalizations(locs, "647", 11001, 11000, 100, 10)
-    
+    ch1 = extractcoordinates(getlocalizations(locs, "488", 1, 11000, 100, 10))
+    ch2 = extractcoordinates(getlocalizations(locs, "647", 11001, 11000, 100, 10))
+    selectedlocs[] = (ch1, ch2)
 end
 
+on(selectedlocs) do (locs1, locs2)
+    ctx = Gtk.getgc(canvas)
+    ENV["GKS_WSTYPE"] = "142"
+    ENV["GKSconid"] = @sprintf("%lu", UInt64(ctx.ptr))
+    GR.scatter(locs1[1,:], locs1[2,:])
+end
+showall(win)
 
 filebox2 = Box(:h)
 push!(fileboxes, filebox2)
 inputrois = Signal("")
 add_button!(filebox2, "Input ROIs", () -> push!(inputrois, pick_file()))
 
-is_initializing = false
-Gtk.showall(win)
 
 
-
-win = Window("Gtk") |> (bx = Box(:v))
-lb = Label("(-, -)")
-canvas = Canvas(600, 450)
-push!(bx, lb, canvas)
-@guarded function draw(widget)
-    ctx = Gtk.getgc(widget)
-    w = Gtk.width(widget)
-    h = Gtk.height(widget)
-    #ENV["GKS_WSTYPE"] = "142"
-    #ENV["GKSconid"] = @sprintf("%lu", UInt64(ctx.ptr))
-    Gtk.rectangle(ctx, 0, 0, w, h)
-    Gtk.set_source_rgb(ctx, 1, 0.5, 1)
-    Gtk.fill(ctx)
-    plot([1, 2, 3])
-end
-
-canvas.draw = draw
-
-Gtk.showall(win)
-
-
-win = Window("Gtk") |> (bx = Box(:v))
-c = Canvas(600, 450)
-push!(bx, c)
-@guarded draw(c) do widget
-    ctx = getgc(c)
-    # ENV["GKS_WSTYPE"] = "142"
-    # ENV["GKSconid"] = @sprintf("%lu", UInt64(ctx.ptr))
-    h = height(c)
-    w = width(c)
-    Gtk.rectangle(ctx, 0, 0, w, h)
-    Gtk.set_source_rgb(ctx, 1, 0.5, 1)
-    Gtk.fill(ctx)
-    #plot([1, 2, 3], size=(h, w))
-end
-c.draw = draw
-showall(win)
