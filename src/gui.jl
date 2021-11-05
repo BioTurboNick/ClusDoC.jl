@@ -71,11 +71,24 @@ on(selectedfile) do obs
     selectedlocs[] = (ch1, ch2)
 end
 
-on(selectedlocs) do (locs1, locs2)
+function cdraw(widget)
+    @idle_add begin
     ctx = Gtk.getgc(canvas)
+    h = Gtk.height(widget)
+    w = Gtk.width(widget)
     ENV["GKS_WSTYPE"] = "142"
     ENV["GKSconid"] = @sprintf("%lu", UInt64(ctx.ptr))
-    GR.scatter(locs1[1,:], locs1[2,:])
+    plt = gcf()
+    plt[:size] = (w, h)
+    #scatter([1, 2, 3], [4, 5, 6])
+    scatter(selectedlocs[][1][1,:], selectedlocs[][1][2,:])
+    # this draws, but it's so much data it's probably better to generate image files once and then display the image
+    end
+end
+draw(cdraw, canvas) # provide function to run when canvas redraws
+
+on(selectedlocs) do _
+    cdraw(canvas)
 end
 showall(win)
 
