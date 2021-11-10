@@ -1,21 +1,48 @@
-using Gtk, Gtk.ShortNames, GtkObservables, NativeFileDialog, GR, Printf, LocalizationMicroscopy
+using Gtk.ShortNames, GtkObservables, NativeFileDialog, Printf, GR, Plots, LocalizationMicroscopy, Images, ImageIO # find out which subpackages of Images I need
 
-b = GtkBuilder(filename="gui/clusdoc.glade")
-canvas = Canvas(500, 500)
-push!(b["canvasbox"], canvas)
+#utility functions
+function getlocalizations(alllocalizations::Vector{Localization}, channelname, startframe, nframes,
+    starttrimframes, endtrimframes)
 
+    lowerlimit = startframe + starttrimframes
+    upperlimit = startframe + nframes - endtrimframes - 1 # activate these limits
+
+    return filter(l -> l.channel == channelname, alllocalizations)
+end
+
+
+# independent observables
+inputfiles = Observable([""])
+outputfolder = Observable("")
+selectedfile = Observable{Union{Nothing, String}}(nothing)
+localizations = Observable(Vector{Vector{Localization}}[]) # vector for each channel in each image
+selectedimg = Observable{Union{Nothing, Matrix{RGB{N0f8}}}}(nothing)
+
+
+# initialize UI elements
+b = Gtk.GtkBuilder(filename="gui/clusdoc.glade")
+imgcanvas = canvas(DeviceUnit, 500, 500)
+push!(b["canvasbox"], imgcanvas)
 win = b["mainwin"]
 
-inputfolder = Observable("")
-inputfiles = Observable([""])
-on(button(widget = b["inputbtn"])) do _
+inputbtn = button(widget = b["inputbtn"])
+inputtxt = textbox(String; widget = b["inputtxt"])
+outputbtn = button(widget = b["outputbtn"])
+textbox(String; widget = b["outputtxt"], observable = outputfolder)
+fileselector = dropdown([], widget = b["fileselector"])
+
+Gtk.showall(win)
+
+
+# define event handlers
+function loadfiles(_)
     files = pick_multi_file()
     if length(files) > 0
         inputfiles[] = files
     end
 end
-inputtxt = textbox(String; widget = b["inputtxt"])
-on(inputfiles) do obs
+
+function vec_to_text(obs)
     if length(obs) > 0
         txt = "\"" * join(obs, "\" \"") * "\""
     else
@@ -25,22 +52,19 @@ on(inputfiles) do obs
         inputtxt[] = txt
     end
 end
-on(inputtxt) do obs
+
+function text_to_vec(obs)
     files = filter!(x -> !contains(x, r"^\s*$"), split(obs, "\"", keepempty = false))
     if files != inputfiles[]
         inputfiles[] = files
     end
 end
 
-outputfolder = Observable("")
-on(button(widget = b["outputbtn"])) do _
+function set_outputfolder(_)
     outputfolder[] = joinpath(pick_folder(), "ClusDoC Results")
 end
-textbox(String; widget = b["outputtxt"], observable = outputfolder)
 
-selectedfile = Observable{Union{Nothing, String}}(nothing)
-fileselector = dropdown([], widget = b["fileselector"])
-on(inputfiles) do obs
+function populate_fileselector(obs)
     @idle_add begin
         empty!(fileselector)
         append!(fileselector, basename.(obs))
@@ -48,48 +72,89 @@ on(inputfiles) do obs
         selectedfile[] = inputfiles[][1]
     end
 end
-on(fileselector) do obs
+
+function load_data(obs)
+    obs === nothing && return
+    for f ∈ inputfiles[]
+        locs = loadlocalizations(f, LocalizationMicroscopy.nikonelementstext)
+        ch1 = getlocalizations(locs, "488", 1, 11000, 100, 10)
+        ch2 = getlocalizations(locs, "647", 11001, 11000, 100, 10) # need to generalize, obviously
+        push!(localizations[], [ch1, ch2])
+    end
+    notify(localizations)
+end
+
+function drawplots(_)
+    outputfolder[] == "" && return
+    for (i, locs) ∈ enumerate(localizations[])
+        ch1 = extractcoordinates(locs[1])
+        ch2 = extractcoordinates(locs[2]) # generalize
+        Plots.scatter(ch1[1, :], ch1[2, :], markercolor = :red, markersize = 4, aspectratio = :equal, size=(2048, 2048), markerstrokewidth = 0)
+        Plots.scatter!(ch2[1, :], ch2[2, :], markercolor = :green, markersize = 4, aspectratio = :equal, size=(2048, 2048), markerstrokewidth = 0)
+        Plots.plot!(ticks=:none, legend = :none, axis = false)
+        path = joinpath(outputfolder[], "localizationmaps")
+        mkpath(path)
+        imagepath = joinpath(path, basename(inputfiles[][i]) * ".png")
+        Plots.savefig(imagepath)
+        # could probably generate plots, but delay saving until an output folder selected.
+    end
+    selectedimg[] = load_image(fileselector[])
+end
+
+function set_selectedfile(obs)
     selectedfile[] = obs !== nothing ? inputfiles[][findfirst(x -> basename(x) == obs, inputfiles[])] : nothing
 end
 
-selectedlocs = Observable((Matrix{Float64}(undef, 2, 0), Matrix{Float64}(undef, 2, 0)))
-
-function getlocalizations(alllocalizations::Vector{Localization}, channelname, startframe, nframes,
-    starttrimframes, endtrimframes)
-
-    lowerlimit = startframe + starttrimframes
-    upperlimit = startframe + nframes - endtrimframes - 1 # activate these limits
-
-    localizations = filter(l -> l.channel == channelname, alllocalizations)
+function load_image(obs)
+    try
+        # may fire before images created
+        selectedimg[] = load(joinpath(outputfolder[], "localizationmaps", obs * ".png"))
+    catch
+    end
 end
 
-on(selectedfile) do obs
-    obs === nothing && return
-    locs = loadlocalizations(obs, LocalizationMicroscopy.nikonelementstext)
-    ch1 = extractcoordinates(getlocalizations(locs, "488", 1, 11000, 100, 10))
-    ch2 = extractcoordinates(getlocalizations(locs, "647", 11001, 11000, 100, 10))
-    selectedlocs[] = (ch1, ch2)
+function draw_canvas(_)
+    selectedimg[] !== nothing || return
+    copy!(imgcanvas, selectedimg[])
 end
+
+# hook up event handlers
+on(loadfiles, inputbtn)
+on(vec_to_text, inputfiles)
+on(load_data, inputfiles)
+on(populate_fileselector, inputfiles)
+on(text_to_vec, inputtxt)
+on(set_outputfolder, outputbtn)
+on(drawplots, outputfolder)
+on(drawplots, localizations)
+on(set_selectedfile, fileselector)
+on(load_image, selectedfile)
+on(draw_canvas, selectedimg)
+draw(draw_canvas, imgcanvas)
+
+# should have a colorset selector?
+
 
 function cdraw(widget)
     @idle_add begin
-    ctx = Gtk.getgc(canvas)
-    h = Gtk.height(widget)
-    w = Gtk.width(widget)
-    ENV["GKS_WSTYPE"] = "142"
-    ENV["GKSconid"] = @sprintf("%lu", UInt64(ctx.ptr))
-    plt = gcf()
-    plt[:size] = (w, h)
-    #scatter([1, 2, 3], [4, 5, 6])
-    scatter(selectedlocs[][1][1,:], selectedlocs[][1][2,:])
-    # this draws, but it's so much data it's probably better to generate image files once and then display the image
+        ctx = Gtk.getgc(widget)
+        h = Gtk.height(widget)
+        w = Gtk.width(widget)
+        ENV["GKS_WSTYPE"] = "142"
+        ENV["GKSconid"] = @sprintf("%lu", UInt64(ctx.ptr))
+        plt = gcf()
+        plt[:size] = (w, h)
+        if fileselector[] !== nothing
+            
+            GR.imshow(joinpath(outputfolder[], "localizationmaps", fileselector[] * ".svg"))
+        end
+        delete!(ENV, "GKS_WSTYPE")
+        delete!(ENV, "GKSconid")
     end
 end
+
 draw(cdraw, canvas) # provide function to run when canvas redraws
 
-on(selectedlocs) do _
-    cdraw(canvas)
-end
 showall(win)
 
 filebox2 = Box(:h)
