@@ -61,7 +61,8 @@ function text_to_vec(obs)
 end
 
 function set_outputfolder(_)
-    outputfolder[] = joinpath(pick_folder(), "ClusDoC Results")
+    path = pick_folder()
+    outputfolder[] = path == "" ? "" : joinpath(path, "ClusDoC Results")
 end
 
 function populate_fileselector(obs)
@@ -75,6 +76,7 @@ end
 
 function load_data(obs)
     obs === nothing && return
+    empty!(localizations)
     for f ∈ inputfiles[]
         locs = loadlocalizations(f, LocalizationMicroscopy.nikonelementstext)
         ch1 = getlocalizations(locs, "488", 1, 11000, 100, 10)
