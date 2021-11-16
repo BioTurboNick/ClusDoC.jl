@@ -1,4 +1,4 @@
-using Gtk.ShortNames, GtkObservables, NativeFileDialog, Printf, GR, Plots, LocalizationMicroscopy, Images, ImageIO # find out which subpackages of Images I need
+using Gtk.ShortNames, GtkObservables, NativeFileDialog, Printf, Plots, LocalizationMicroscopy, Images, ImageIO # find out which subpackages of Images I need
 
 #utility functions
 function getlocalizations(alllocalizations::Vector{Localization}, channelname, startframe, nframes,
@@ -14,7 +14,6 @@ end
 # independent observables
 inputfiles = Observable([""])
 outputfolder = Observable("")
-selectedfile = Observable{Union{Nothing, String}}(nothing)
 localizations = Observable(Vector{Vector{Localization}}[]) # vector for each channel in each image
 selectedimg = Observable{Union{Nothing, Matrix{RGB{N0f8}}}}(nothing)
 
@@ -70,13 +69,12 @@ function populate_fileselector(obs)
         empty!(fileselector)
         append!(fileselector, basename.(obs))
         fileselector[] = basename(inputfiles[][1])
-        selectedfile[] = inputfiles[][1]
     end
 end
 
 function load_data(obs)
     obs === nothing && return
-    empty!(localizations)
+    empty!(localizations[])
     for f ∈ inputfiles[]
         locs = loadlocalizations(f, LocalizationMicroscopy.nikonelementstext)
         ch1 = getlocalizations(locs, "488", 1, 11000, 100, 10)
@@ -91,9 +89,9 @@ function drawplots(_)
     for (i, locs) ∈ enumerate(localizations[])
         ch1 = extractcoordinates(locs[1])
         ch2 = extractcoordinates(locs[2]) # generalize
-        Plots.scatter(ch1[1, :], ch1[2, :], markercolor = :red, markersize = 4, aspectratio = :equal, size=(2048, 2048), markerstrokewidth = 0)
-        Plots.scatter!(ch2[1, :], ch2[2, :], markercolor = :green, markersize = 4, aspectratio = :equal, size=(2048, 2048), markerstrokewidth = 0)
-        Plots.plot!(ticks=:none, legend = :none, axis = false)
+        Plots.scatter(ch1[1, :], ch1[2, :], markercolor = RGBA(1.0, 0.0, 0.0, 0.5), markersize = 2, aspectratio = :equal, size=(1024, 1024), markerstrokewidth = 0)
+        Plots.scatter!(ch2[1, :], ch2[2, :], markercolor = RGBA(0.0, 1.0, 0.0, 0.5), markersize = 2, aspectratio = :equal, size=(1024, 1024), markerstrokewidth = 0)
+        Plots.plot!(ticks=:none, legend = :none, axis = false, margin=0 * Plots.mm)
         path = joinpath(outputfolder[], "localizationmaps")
         mkpath(path)
         imagepath = joinpath(path, basename(inputfiles[][i]) * ".png")
@@ -101,10 +99,6 @@ function drawplots(_)
         # could probably generate plots, but delay saving until an output folder selected.
     end
     selectedimg[] = load_image(fileselector[])
-end
-
-function set_selectedfile(obs)
-    selectedfile[] = obs !== nothing ? inputfiles[][findfirst(x -> basename(x) == obs, inputfiles[])] : nothing
 end
 
 function load_image(obs)
@@ -129,8 +123,7 @@ on(text_to_vec, inputtxt)
 on(set_outputfolder, outputbtn)
 on(drawplots, outputfolder)
 on(drawplots, localizations)
-on(set_selectedfile, fileselector)
-on(load_image, selectedfile)
+on(load_image, fileselector)
 on(draw_canvas, selectedimg)
 draw(draw_canvas, imgcanvas)
 
