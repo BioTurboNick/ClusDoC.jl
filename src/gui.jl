@@ -16,7 +16,10 @@ inputfiles = Observable([""])
 outputfolder = Observable("")
 localizations = Observable(Vector{Vector{Localization}}[]) # vector for each channel in each image
 selectedimg = Observable{Union{Nothing, Matrix{RGB{N0f8}}}}(nothing)
-
+rois = Observable(Dict{String, Any}())
+activedrawing = Observable(false)
+polyroibuilder = Observable([])
+nextlineposition = Observable{Union{Nothing, XY}}(nothing)
 
 # initialize UI elements
 b = Gtk.GtkBuilder(filename="gui/clusdoc.glade")
@@ -91,7 +94,7 @@ function drawplots(_)
         ch2 = extractcoordinates(locs[2]) # generalize
         Plots.scatter(ch1[1, :], ch1[2, :], markercolor = RGBA(1.0, 0.0, 0.0, 0.5), markersize = 2, aspectratio = :equal, size=(1024, 1024), markerstrokewidth = 0)
         Plots.scatter!(ch2[1, :], ch2[2, :], markercolor = RGBA(0.0, 1.0, 0.0, 0.5), markersize = 2, aspectratio = :equal, size=(1024, 1024), markerstrokewidth = 0)
-        Plots.plot!(ticks=:none, legend = :none, axis = false, margin=0 * Plots.mm)
+        Plots.plot!(ticks=:none, legend = :none, axis = false, widen = false, margin=-2(Plots.mm)) # change margin when Plots is updated
         path = joinpath(outputfolder[], "localizationmaps")
         mkpath(path)
         imagepath = joinpath(path, basename(inputfiles[][i]) * ".png")
@@ -112,6 +115,45 @@ end
 function draw_canvas(_)
     selectedimg[] !== nothing || return
     copy!(imgcanvas, selectedimg[])
+    set_coordinates(imgcanvas, BoundingBox(0, 1, 0, 1))
+    ctx = getgc(imgcanvas)
+    for roi ∈ rois[fileselector[]]
+        drawroi(ctx, roi, colorant"blue")
+    end
+    for point ∈ polyroibuilder[]
+        drawline(ctx, roi, colorant"blue")
+    end
+end
+
+function onmouseclick(btn)
+    if btn.button == 1 && btn.modifiers == 0
+        if !activedrawing[]
+            activedrawing[] = true
+            polyroibuilder[] = [btn.position]
+        else btn.button == 1 && btn.modifiers == 0
+            push!(polyroibuilder[], btn.position)
+        end
+        if btn.clicktype == DOUBLE_BUTTON_PRESS
+            # two single-click events occur when a double-click event occurs
+            pop!(polyroibuilder[])
+            pop!(polyroibuilder[])
+            push!(polyroibuilder[], polyroibuilder[][1])
+            if haskey(rois[], fileselector[])
+                push!(rois[][fileselector[]], polyroibuilder[])
+            else
+                rois[][fileselector[]] = [polyroibuilder[]]
+            end
+            polyroibuilder[] = []
+            activedrawing[] == false
+            nextlineposition[] = nothing
+        end
+    end
+end
+
+function onmousemove(btn)
+    if activedrawing[]
+        nextlineposition[] = btn.position
+    end
 end
 
 # hook up event handlers
@@ -126,36 +168,8 @@ on(drawplots, localizations)
 on(load_image, fileselector)
 on(draw_canvas, selectedimg)
 draw(draw_canvas, imgcanvas)
+on(onmouseclick, imgcanvas.mouse.buttonpress)
+on(onmousemove, imgcanvas.mouse.motion)
 
 # should have a colorset selector?
-
-
-function cdraw(widget)
-    @idle_add begin
-        ctx = Gtk.getgc(widget)
-        h = Gtk.height(widget)
-        w = Gtk.width(widget)
-        ENV["GKS_WSTYPE"] = "142"
-        ENV["GKSconid"] = @sprintf("%lu", UInt64(ctx.ptr))
-        plt = gcf()
-        plt[:size] = (w, h)
-        if fileselector[] !== nothing
-            
-            GR.imshow(joinpath(outputfolder[], "localizationmaps", fileselector[] * ".svg"))
-        end
-        delete!(ENV, "GKS_WSTYPE")
-        delete!(ENV, "GKSconid")
-    end
-end
-
-draw(cdraw, canvas) # provide function to run when canvas redraws
-
-showall(win)
-
-filebox2 = Box(:h)
-push!(fileboxes, filebox2)
-inputrois = Signal("")
-add_button!(filebox2, "Input ROIs", () -> push!(inputrois, pick_file()))
-
-
 
