@@ -108,7 +108,8 @@ function load_image(obs)
     try
         # may fire before images created
         selectedimg[] = load(joinpath(outputfolder[], "localizationmaps", obs * ".png"))
-    catch
+    catch ex
+        println(ex)
     end
 end
 
@@ -116,12 +117,14 @@ function draw_canvas(_)
     selectedimg[] !== nothing || return
     copy!(imgcanvas, selectedimg[])
     set_coordinates(imgcanvas, BoundingBox(0, 1, 0, 1))
-    ctx = getgc(imgcanvas)
-    for roi ∈ rois[fileselector[]]
-        drawroi(ctx, roi, colorant"blue")
+    ctx = Gtk.getgc(imgcanvas)
+    if haskey(rois[], fileselector[])
+        for roi ∈ rois[][fileselector[]]
+            drawroi(ctx, roi, colorant"blue")
+        end
     end
     for point ∈ polyroibuilder[]
-        drawline(ctx, roi, colorant"blue")
+        drawline(ctx, point, colorant"blue")
     end
 end
 
