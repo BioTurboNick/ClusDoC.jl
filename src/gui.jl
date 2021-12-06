@@ -105,11 +105,14 @@ function drawplots(_)
 end
 
 function load_image(obs)
+    obs === nothing && return
     try
         # may fire before images created
         selectedimg[] = load(joinpath(outputfolder[], "localizationmaps", obs * ".png"))
     catch ex
-        println(ex)
+        if !(ex isa ArgumentError)
+            rethrow()
+        end
     end
 end
 
