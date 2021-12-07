@@ -1,4 +1,5 @@
 using Gtk.ShortNames, GtkObservables, NativeFileDialog, Printf, Plots, LocalizationMicroscopy, Images, ImageIO # find out which subpackages of Images I need
+using PolygonOps
 
 #utility functions
 function getlocalizations(alllocalizations::Vector{Localization}, channelname, startframe, nframes,
@@ -149,6 +150,9 @@ function drawroi(ctx, roi, color, close = true)
     Gtk.stroke(ctx)
 end
 
+import Base.getindex
+getindex(p::XY, i::Int) = i == 1 ? p.x : i == 2 ? p.y : throw(ArgumentError("must be 1 or 2, got $i"))
+
 function onmouseclick(btn)
     if activedrawing[]
         if btn.button == 1 && btn.modifiers == 0
@@ -176,7 +180,7 @@ function onmouseclick(btn)
             end
         end
     else
-        # select ROI
+        println(inpolygon.(Ref(btn.position), collect(rois[][fileselector[]])))
     end
 end
 
