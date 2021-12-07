@@ -32,6 +32,7 @@ inputtxt = textbox(String; widget = b["inputtxt"])
 outputbtn = button(widget = b["outputbtn"])
 textbox(String; widget = b["outputtxt"], observable = outputfolder)
 fileselector = dropdown([], widget = b["fileselector"])
+addroibtn = button(widget = b["roiadd"])
 
 Gtk.showall(win)
 
@@ -116,6 +117,10 @@ function load_image(obs)
     end
 end
 
+function start_roi_drawing(obs)
+    activedrawing[] = true
+end
+
 function draw_canvas(c, img, rois, newroi, nextlineposition)
     img !== nothing || return
     copy!(c, img)
@@ -123,10 +128,11 @@ function draw_canvas(c, img, rois, newroi, nextlineposition)
     ctx = Gtk.getgc(c)
     if haskey(rois, fileselector[])
         for roi ∈ rois[fileselector[]]
-            drawroi(ctx, roi, colorant"blue")
+            drawroi(ctx, roi, colorant"gray")
         end
     end
-    drawroi(ctx, [newroi; nextlineposition], colorant"red", false)
+    nextpoly = nextlineposition === nothing ? newroi : [newroi; nextlineposition]
+    drawroi(ctx, nextpoly, colorant"blue", false)
 end
 
 function drawroi(ctx, roi, color, close = true)
@@ -144,30 +150,33 @@ function drawroi(ctx, roi, color, close = true)
 end
 
 function onmouseclick(btn)
-    if btn.button == 1 && btn.modifiers == 0
-        if !activedrawing[]
-            activedrawing[] = true
-            polyroibuilder[] = [btn.position]
-        else btn.button == 1 && btn.modifiers == 0
-            push!(polyroibuilder[], btn.position)
-        end
-        if btn.clicktype == DOUBLE_BUTTON_PRESS
-            # two single-click events occur when a double-click event occurs
-            pop!(polyroibuilder[])
-            pop!(polyroibuilder[])
-            push!(polyroibuilder[], polyroibuilder[][1])
-            if haskey(rois[], fileselector[])
-                push!(rois[][fileselector[]], polyroibuilder[])
-            else
-                rois[][fileselector[]] = [polyroibuilder[]]
+    if activedrawing[]
+        if btn.button == 1 && btn.modifiers == 0
+            if !activedrawing[]
+                polyroibuilder[] = [btn.position]
+            else btn.button == 1 && btn.modifiers == 0
+                push!(polyroibuilder[], btn.position)
             end
-            polyroibuilder[] = []
-            activedrawing[] == false
-            nextlineposition[] = nothing
-            notify!(rois)
-        else
-            notify!(polyroibuilder)
+            if btn.clicktype == DOUBLE_BUTTON_PRESS
+                # two single-click events occur when a double-click event occurs
+                pop!(polyroibuilder[])
+                pop!(polyroibuilder[])
+                push!(polyroibuilder[], polyroibuilder[][1])
+                if haskey(rois[], fileselector[])
+                    push!(rois[][fileselector[]], polyroibuilder[])
+                else
+                    rois[][fileselector[]] = [polyroibuilder[]]
+                end
+                polyroibuilder[] = []
+                activedrawing[] = false
+                nextlineposition[] = nothing
+                notify!(rois)
+            else
+                notify!(polyroibuilder)
+            end
         end
+    else
+        # select ROI
     end
 end
 
@@ -187,6 +196,7 @@ on(set_outputfolder, outputbtn)
 on(drawplots, outputfolder)
 on(drawplots, localizations)
 on(load_image, fileselector)
+on(start_roi_drawing, addroibtn)
 
 draw(draw_canvas, imgcanvas, selectedimg, rois, polyroibuilder, nextlineposition)
 
