@@ -23,7 +23,7 @@ nextlineposition = Observable{Union{Nothing, XY}}(nothing)
 
 # initialize UI elements
 b = Gtk.GtkBuilder(filename="gui/clusdoc.glade")
-imgcanvas = canvas(DeviceUnit, 500, 500)
+imgcanvas = canvas(UserUnit, 500, 500)
 push!(b["canvasbox"], imgcanvas)
 win = b["mainwin"]
 
@@ -116,19 +116,31 @@ function load_image(obs)
     end
 end
 
-function draw_canvas(_)
-    selectedimg[] !== nothing || return
-    copy!(imgcanvas, selectedimg[])
-    set_coordinates(imgcanvas, BoundingBox(0, 1, 0, 1))
-    ctx = Gtk.getgc(imgcanvas)
-    if haskey(rois[], fileselector[])
-        for roi ∈ rois[][fileselector[]]
+function draw_canvas(c, img, rois, newroi, nextlineposition)
+    img !== nothing || return
+    copy!(c, img)
+    set_coordinates(c, BoundingBox(0, 1, 0, 1))
+    ctx = Gtk.getgc(c)
+    if haskey(rois, fileselector[])
+        for roi ∈ rois[fileselector[]]
             drawroi(ctx, roi, colorant"blue")
         end
     end
-    for point ∈ polyroibuilder[]
-        drawline(ctx, point, colorant"blue")
+    drawroi(ctx, [newroi; nextlineposition], colorant"red", false)
+end
+
+function drawroi(ctx, roi, color, close = true)
+    isempty(roi) && return
+    p1 = first(roi)
+    p = p1
+    Gtk.move_to(ctx, p.x, p.y)
+    Gtk.set_source(ctx, color)
+    for i ∈ 2:length(roi)
+        p = roi[i]
+        Gtk.line_to(ctx, p.x, p.y)
     end
+    close && Gtk.line_to(ctx, p1.x, p1.y)
+    Gtk.stroke(ctx)
 end
 
 function onmouseclick(btn)
@@ -152,6 +164,9 @@ function onmouseclick(btn)
             polyroibuilder[] = []
             activedrawing[] == false
             nextlineposition[] = nothing
+            notify!(rois)
+        else
+            notify!(polyroibuilder)
         end
     end
 end
@@ -172,10 +187,13 @@ on(set_outputfolder, outputbtn)
 on(drawplots, outputfolder)
 on(drawplots, localizations)
 on(load_image, fileselector)
-on(draw_canvas, selectedimg)
-draw(draw_canvas, imgcanvas)
+
+draw(draw_canvas, imgcanvas, selectedimg, rois, polyroibuilder, nextlineposition)
+
 on(onmouseclick, imgcanvas.mouse.buttonpress)
 on(onmousemove, imgcanvas.mouse.motion)
+
+
 
 # should have a colorset selector?
 
