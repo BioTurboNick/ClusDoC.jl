@@ -20,7 +20,8 @@ selectedimg = Observable{Union{Nothing, Matrix{RGB{N0f8}}}}(nothing)
 rois = Observable(Dict{String, Any}())
 activedrawing = Observable(false)
 polyroibuilder = Observable([])
-nextlineposition = Observable{Union{Nothing, XY}}(nothing)
+nextlineposition = Observable{Union{Nothing, NTuple{2, Float64}}}(nothing)
+selectedroi = Observable{Union{Nothing, Int}}(nothing)
 
 # initialize UI elements
 b = Gtk.GtkBuilder(filename="gui/clusdoc.glade")
@@ -118,18 +119,26 @@ function load_image(obs)
     end
 end
 
+function change_roi(obs)
+    selectedroi[] = nothing
+end
+
 function start_roi_drawing(obs)
     activedrawing[] = true
 end
 
-function draw_canvas(c, img, rois, newroi, nextlineposition)
+function draw_canvas(c, img, rois, newroi, nextlineposition, selectedroi)
     img !== nothing || return
     copy!(c, img)
     set_coordinates(c, BoundingBox(0, 1, 0, 1))
     ctx = Gtk.getgc(c)
     if haskey(rois, fileselector[])
-        for roi ∈ rois[fileselector[]]
-            drawroi(ctx, roi, colorant"gray")
+        for (i, roi) ∈ enumerate(rois[fileselector[]])
+            if i == selectedroi
+                drawroi(ctx, roi, colorant"blue")
+            else
+                drawroi(ctx, roi, colorant"gray")
+            end
         end
     end
     nextpoly = nextlineposition === nothing ? newroi : [newroi; nextlineposition]
@@ -140,27 +149,20 @@ function drawroi(ctx, roi, color, close = true)
     isempty(roi) && return
     p1 = first(roi)
     p = p1
-    Gtk.move_to(ctx, p.x, p.y)
+    Gtk.move_to(ctx, p[1], p[2])
     Gtk.set_source(ctx, color)
     for i ∈ 2:length(roi)
         p = roi[i]
-        Gtk.line_to(ctx, p.x, p.y)
+        Gtk.line_to(ctx, p[1], p[2])
     end
-    close && Gtk.line_to(ctx, p1.x, p1.y)
+    close && Gtk.line_to(ctx, p[1], p[2])
     Gtk.stroke(ctx)
 end
-
-import Base.getindex
-getindex(p::XY, i::Int) = i == 1 ? p.x : i == 2 ? p.y : throw(ArgumentError("must be 1 or 2, got $i"))
 
 function onmouseclick(btn)
     if activedrawing[]
         if btn.button == 1 && btn.modifiers == 0
-            if !activedrawing[]
-                polyroibuilder[] = [btn.position]
-            else btn.button == 1 && btn.modifiers == 0
-                push!(polyroibuilder[], btn.position)
-            end
+            push!(polyroibuilder[], (btn.position.x.val, btn.position.y.val))
             if btn.clicktype == DOUBLE_BUTTON_PRESS
                 # two single-click events occur when a double-click event occurs
                 pop!(polyroibuilder[])
@@ -180,13 +182,22 @@ function onmouseclick(btn)
             end
         end
     else
-        println(inpolygon.(Ref(btn.position), collect(rois[][fileselector[]])))
+        if haskey(rois[], fileselector[])
+            filerois = collect(rois[][fileselector[]])
+            pos = (btn.position.x.val, btn.position.y.val)
+            matches = inpolygon.(Ref(pos), filerois) .!= 0
+            if selectedroi[] === nothing
+                selectedroi[] = findfirst(matches)
+            else
+                selectedroi[] = findnext(matches, selectedroi[] + 1)
+            end
+        end
     end
 end
 
 function onmousemove(btn)
     if activedrawing[]
-        nextlineposition[] = btn.position
+        nextlineposition[] = (btn.position.x.val, btn.position.y.val)
     end
 end
 
@@ -200,9 +211,10 @@ on(set_outputfolder, outputbtn)
 on(drawplots, outputfolder)
 on(drawplots, localizations)
 on(load_image, fileselector)
+on(change_roi, fileselector)
 on(start_roi_drawing, addroibtn)
 
-draw(draw_canvas, imgcanvas, selectedimg, rois, polyroibuilder, nextlineposition)
+draw(draw_canvas, imgcanvas, selectedimg, rois, polyroibuilder, nextlineposition, selectedroi)
 
 on(onmouseclick, imgcanvas.mouse.buttonpress)
 on(onmousemove, imgcanvas.mouse.motion)
