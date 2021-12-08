@@ -116,7 +116,11 @@
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
                         <child>
-                          <placeholder/>
+                          <object class="GtkImage">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="pixbuf">addroi.png</property>
+                          </object>
                         </child>
                       </object>
                       <packing>
@@ -131,7 +135,11 @@
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
                         <child>
-                          <placeholder/>
+                          <object class="GtkImage">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="pixbuf">deleteroi.png</property>
+                          </object>
                         </child>
                       </object>
                       <packing>
@@ -146,7 +154,11 @@
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
                         <child>
-                          <placeholder/>
+                          <object class="GtkImage">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="pixbuf">save.png</property>
+                          </object>
                         </child>
                       </object>
                       <packing>
@@ -161,7 +173,11 @@
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
                         <child>
-                          <placeholder/>
+                          <object class="GtkImage">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="pixbuf">open.png</property>
+                          </object>
                         </child>
                       </object>
                       <packing>
