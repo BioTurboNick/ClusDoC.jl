@@ -35,6 +35,7 @@ outputbtn = button(widget = b["outputbtn"])
 textbox(String; widget = b["outputtxt"], observable = outputfolder)
 fileselector = dropdown([], widget = b["fileselector"])
 addroibtn = button(widget = b["roiadd"])
+deleteroibtn = button(widget = b["roidelete"])
 
 Gtk.showall(win)
 
@@ -119,12 +120,18 @@ function load_image(obs)
     end
 end
 
-function change_roi(obs)
+function change_file(obs)
     selectedroi[] = nothing
 end
 
 function start_roi_drawing(obs)
     activedrawing[] = true
+    selectedroi[] = nothing
+end
+
+function delete_roi(obs)
+    deleteat!(rois[][fileselector[]], selectedroi[])
+    selectedroi[] = nothing
 end
 
 function draw_canvas(c, img, rois, newroi, nextlineposition, selectedroi)
@@ -211,8 +218,9 @@ on(set_outputfolder, outputbtn)
 on(drawplots, outputfolder)
 on(drawplots, localizations)
 on(load_image, fileselector)
-on(change_roi, fileselector)
+on(change_file, fileselector)
 on(start_roi_drawing, addroibtn)
+on(delete_roi, deleteroibtn)
 
 draw(draw_canvas, imgcanvas, selectedimg, rois, polyroibuilder, nextlineposition, selectedroi)
 
