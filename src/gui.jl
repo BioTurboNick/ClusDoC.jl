@@ -138,7 +138,60 @@ function delete_roi(obs)
 end
 
 function save_rois(obs)
-    
+    outputfolder !== "" || return
+    roifile = joinpath(outputfolder[], "roicoordinates.txt")
+
+    if isfile(roifile)
+        error("file already exists; delete it in order to save")
+    end
+
+    open(roifile, "w") do f
+        for (filename, filerois) ∈ rois[]
+            write(f, "#", filename, "\n")
+            for roi ∈ filerois
+                write(f, "\t")
+                for p ∈ @view roi[1:end-1]
+                    write(f, string(p), ",")
+                end
+                write(f, string(roi[end]), "\n")
+            end
+            write(f, "\n")
+        end
+    end
+end
+
+function load_rois(obs)
+    # if file doesn't exist, ask for location
+    outputfolder !== "" || return
+    roifile = joinpath(outputfolder[], "roicoordinates.txt")
+
+    if !isfile(roifile)
+        roifile = pick_file()
+    end
+    isfile(roifile) || return
+    roidict = Dict{String, Any}()
+    open(roifile, "r") do f
+        lines = readlines(f)
+        filename = ""
+        filerois = []
+        for line ∈ lines
+            if startswith(line, "#")
+                if filename != ""
+                    roidict[filename] = filerois
+                    filerois = []
+                end
+                filename = only(split(line, "#", keepempty = false))
+            elseif startswith(line, "\t") && filename != ""
+                points = split.(
+                    split(only(split(line, ('\t'), keepempty = false)), "),("),
+                    Ref(('(', ',', ')')), keepempty = false)
+                roi = [tuple(parse.(Float64, y)...) for y ∈ points]
+                push!(filerois, roi)
+            end
+        end
+        filename != "" && (roidict[filename] = filerois)
+    end
+    rois[] = roidict
 end
 
 function draw_canvas(c, img, rois, newroi, nextlineposition, selectedroi)
