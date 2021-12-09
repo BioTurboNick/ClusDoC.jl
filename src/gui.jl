@@ -1,5 +1,6 @@
 using Gtk.ShortNames, GtkObservables, NativeFileDialog, Printf, Plots, LocalizationMicroscopy, Images, ImageIO # find out which subpackages of Images I need
 using PolygonOps
+using ClusDoC
 
 #utility functions
 function getlocalizations(alllocalizations::Vector{Localization}, channelname, startframe, nframes,
@@ -194,6 +195,14 @@ function load_rois(obs)
     rois[] = roidict
 end
 
+function run_clusdoc(obs)
+    for inputfile ∈ inputfiles[]
+        for roi ∈ rois[][basename(inputfile)]
+            clusdoc(inputfile, outputfolder, roi)
+        end
+    end
+end
+
 function draw_canvas(c, img, rois, newroi, nextlineposition, selectedroi)
     img !== nothing || return
     copy!(c, img)
@@ -283,6 +292,7 @@ on(start_roi_drawing, addroibtn)
 on(delete_roi, deleteroibtn)
 on(save_rois, savebtn)
 on(load_rois, loadbtn)
+on(run_clusdoc, clusdoc)
 
 draw(draw_canvas, imgcanvas, selectedimg, rois, polyroibuilder, nextlineposition, selectedroi)
 

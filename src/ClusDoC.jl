@@ -39,17 +39,6 @@ function clusdoc(path, outputpath)
     end
     Makie.scatter!(clicks, color = :black, marker = '+', markersize = 20, show_axis = false)
 
-    # on(events(p).mousebutton, priority = 0) do buttons
-    #     if ispressed(p, Mouse.left)
-    #         pos = AbstractPlotting.mouseposition(p)
-    #         push!(clicks, push!(clicks[], pos))
-    #     end
-    #     return
-    # end
-    # scatter!(p, clicks, color = :red, marker = '+', markersize = 20, show_axis = false)
-    # RecordEvents(p, "roi_drawing")
-    # p
-
     cr = doc(["488", "647"], [ch1locs, ch2locs], 20, 500, 10, 40960*40960)
     dbscan!(cr, 20, 3, true, 20)
     smooth!(cr, 20, 15)
@@ -66,38 +55,18 @@ function clusdoc(path, outputpath)
     return cr
 end
 
-#=
-using WGLMakie
-fig = Figure()
-
-ax = Axis(fig[1, 1])
-fig[2, 1] = buttongrid = GridLayout(tellwidth = false)
-
-counts = Node([1, 4, 3, 7, 2])
-
-buttonlabels = [@lift("Count: $($counts[i])") for i in 1:5]
-
-buttons = buttongrid[1, 1:5] = [Button(fig, label = l) for l in buttonlabels]
-
-for i in 1:5
-    on(buttons[i].clicks) do n
-        counts[][i] += 1
-        notify(counts)
-    end
+function clusdoc(channelnames, localizations)
+    cr = doc(channelnames, localizations, 20, 500, 10, 40960*40960)
+    dbscan!(cr, 20, 3, true, 20)
+    smooth!(cr, 20, 15)
+    return cr
 end
 
-barplot!(counts, color = cgrad(:Spectral)[LinRange(0, 1, 5)])
-ylims!(ax, 0, 20)
-
-fig
-=#
 
 #=
 julia> @time clusdoc(path)
 134.263914 seconds (15.54 M allocations: 6.483 GiB, 1.32% gc time)
 =#
-
-# plot
 
 
 function getlocalizations(alllocalizations::Vector{Localization}, channelname, startframe, nframes,
