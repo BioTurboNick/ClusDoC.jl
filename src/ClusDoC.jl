@@ -6,18 +6,18 @@ using ImageFiltering
 using Interpolations
 using InvertedIndices
 using LocalizationMicroscopy
-using Makie
-using WGLMakie
 using NearestNeighbors
 #using Plots
 using PolygonOps
 using StatsBase
 using XLSX
 
-include("src/types/ChannelResult.jl") # remove src
-include("src/doc.jl")
-include("src/dbscan.jl")
-include("src/smooth.jl")
+export clusdoc
+
+include("types/ChannelResult.jl") # remove src
+include("doc.jl")
+include("dbscan.jl")
+include("smooth.jl")
 
 path = "test/realtest.bin.txt"
 outputpath = "output"

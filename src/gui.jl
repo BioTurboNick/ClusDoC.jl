@@ -16,7 +16,7 @@ end
 # independent observables
 inputfiles = Observable([""])
 outputfolder = Observable("")
-localizations = Observable(Vector{Vector{Localization}}[]) # vector for each channel in each image
+localizations = Observable(Dict{String, Vector{Vector{Localization}}}()) # vector for each channel in each image
 selectedimg = Observable{Union{Nothing, Matrix{RGB{N0f8}}}}(nothing)
 rois = Observable(Dict{String, Any}())
 activedrawing = Observable(false)
@@ -39,6 +39,7 @@ addroibtn = button(widget = b["roiadd"])
 deleteroibtn = button(widget = b["roidelete"])
 savebtn = button(widget = b["roisave"])
 loadbtn = button(widget = b["roiload"])
+runbtn = button(widget = b["runbtn"])
 
 Gtk.showall(win)
 
@@ -89,15 +90,19 @@ function load_data(obs)
         locs = loadlocalizations(f, LocalizationMicroscopy.nikonelementstext)
         ch1 = getlocalizations(locs, "488", 1, 11000, 100, 10)
         ch2 = getlocalizations(locs, "647", 11001, 11000, 100, 10) # need to generalize, obviously
-        push!(localizations[], [ch1, ch2])
+        localizations[][basename(f)] = [ch1, ch2]
     end
-    notify(localizations)
     empty!(rois[])
+    notify!(localizations)
+    notify!(rois)
 end
 
 function drawplots(_)
     outputfolder[] == "" && return
-    for (i, locs) ∈ enumerate(localizations[])
+    for f ∈ inputfiles[]
+        filename = basename(f)
+        haskey(localizations[], filename) || continue
+        locs = localizations[][filename]
         ch1 = extractcoordinates(locs[1])
         ch2 = extractcoordinates(locs[2]) # generalize
         Plots.scatter(ch1[1, :], ch1[2, :], markercolor = RGBA(1.0, 0.0, 0.0, 0.5), markersize = 2, aspectratio = :equal, size=(1024, 1024), markerstrokewidth = 0)
@@ -105,7 +110,7 @@ function drawplots(_)
         Plots.plot!(ticks=:none, legend = :none, axis = false, widen = false, margin=-2(Plots.mm)) # change margin when Plots is updated
         path = joinpath(outputfolder[], "localizationmaps")
         mkpath(path)
-        imagepath = joinpath(path, basename(inputfiles[][i]) * ".png")
+        imagepath = joinpath(path, filename * ".png")
         Plots.savefig(imagepath)
         # could probably generate plots, but delay saving until an output folder selected.
     end
@@ -197,11 +202,22 @@ end
 
 function run_clusdoc(obs)
     for inputfile ∈ inputfiles[]
-        for roi ∈ rois[][basename(inputfile)]
-            clusdoc(inputfile, outputfolder, roi)
+        filename = basename(inputfile)
+        localizations = localizations[][filename]
+        for roi ∈ rois[][filename]
+
+            cr = clusdoc(["488", "647"] , roilocalizations)
         end
     end
 end
+
+#=
+roi = rois[]["realtest.bin.txt"][1]
+locs = localizations[]["realtest.bin.txt"]
+locs1 = extractcoordinates(locs[1])
+inpolygon.(eachcol(locs1 ./ 40960), Ref(roi))
+
+=#
 
 function draw_canvas(c, img, rois, newroi, nextlineposition, selectedroi)
     img !== nothing || return
@@ -277,6 +293,7 @@ function onmousemove(btn)
     end
 end
 
+
 # hook up event handlers
 on(loadfiles, inputbtn)
 on(vec_to_text, inputfiles)
@@ -292,7 +309,7 @@ on(start_roi_drawing, addroibtn)
 on(delete_roi, deleteroibtn)
 on(save_rois, savebtn)
 on(load_rois, loadbtn)
-on(run_clusdoc, clusdoc)
+on(run_clusdoc, runbtn)
 
 draw(draw_canvas, imgcanvas, selectedimg, rois, polyroibuilder, nextlineposition, selectedroi)
 
