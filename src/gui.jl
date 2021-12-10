@@ -208,7 +208,6 @@ function run_clusdoc(obs)
                 push!(roilocalizations, locs[chname][roichlocalizationsmask])
             end
             cr = clusdoc(chnames, roilocalizations)
-            println(cr)
         end
     end
 end
