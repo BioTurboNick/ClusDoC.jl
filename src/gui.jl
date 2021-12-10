@@ -2,21 +2,10 @@ using Gtk.ShortNames, GtkObservables, NativeFileDialog, Printf, Plots, Localizat
 using PolygonOps
 using ClusDoC
 
-#utility functions
-function getlocalizations(alllocalizations::Vector{Localization}, channelname, startframe, nframes,
-    starttrimframes, endtrimframes)
-
-    lowerlimit = startframe + starttrimframes
-    upperlimit = startframe + nframes - endtrimframes - 1 # activate these limits
-
-    return filter(l -> l.channel == channelname, alllocalizations)
-end
-
-
 # independent observables
 inputfiles = Observable([""])
 outputfolder = Observable("")
-localizations = Observable(Dict{String, Vector{Vector{Localization}}}()) # vector for each channel in each image
+localizations = Observable(Dict{String, Dict{String, Vector{Localization}}}()) # vector for each channel in each image
 selectedimg = Observable{Union{Nothing, Matrix{RGB{N0f8}}}}(nothing)
 rois = Observable(Dict{String, Any}())
 activedrawing = Observable(false)
@@ -88,14 +77,18 @@ function load_data(obs)
     empty!(localizations[])
     for f ∈ inputfiles[]
         locs = loadlocalizations(f, LocalizationMicroscopy.nikonelementstext)
-        ch1 = getlocalizations(locs, "488", 1, 11000, 100, 10)
-        ch2 = getlocalizations(locs, "647", 11001, 11000, 100, 10) # need to generalize, obviously
-        localizations[][basename(f)] = [ch1, ch2]
+        fname = basename(f)
+        localizations[][fname] = Dict{String, Vector{Localization}}()
+        for chname ∈ unique(l.channel for l ∈ locs)
+            localizations[][fname][chname] = filter(l -> l.channel == chname, locs)
+        end
     end
     empty!(rois[])
     notify!(localizations)
     notify!(rois)
 end
+
+const colors = (:blue, :orange, :purple)
 
 function drawplots(_)
     outputfolder[] == "" && return
@@ -103,10 +96,11 @@ function drawplots(_)
         filename = basename(f)
         haskey(localizations[], filename) || continue
         locs = localizations[][filename]
-        ch1 = extractcoordinates(locs[1])
-        ch2 = extractcoordinates(locs[2]) # generalize
-        Plots.scatter(ch1[1, :], ch1[2, :], markercolor = RGBA(1.0, 0.0, 0.0, 0.5), markersize = 2, aspectratio = :equal, size=(1024, 1024), markerstrokewidth = 0)
-        Plots.scatter!(ch2[1, :], ch2[2, :], markercolor = RGBA(0.0, 1.0, 0.0, 0.5), markersize = 2, aspectratio = :equal, size=(1024, 1024), markerstrokewidth = 0)
+        plot()
+        for (i, chname) ∈ enumerate(sort(collect(keys(locs))))
+            chpoints = extractcoordinates(locs[chname])
+            Plots.scatter!(chpoints[1, :], chpoints[2, :], markercolor = colors[i], markeralpha = 0.5, markersize = 4, aspectratio = :equal, size=(2048, 2048), markerstrokewidth = 0)
+        end
         Plots.plot!(ticks=:none, legend = :none, axis = false, widen = false, margin=-2(Plots.mm)) # change margin when Plots is updated
         path = joinpath(outputfolder[], "localizationmaps")
         mkpath(path)
@@ -203,10 +197,18 @@ end
 function run_clusdoc(obs)
     for inputfile ∈ inputfiles[]
         filename = basename(inputfile)
-        localizations = localizations[][filename]
-        for roi ∈ rois[][filename]
+        locs = localizations[][filename]
+        chnames = sort(unique(keys(locs)))
 
-            cr = clusdoc(["488", "647"] , roilocalizations)
+        for roi ∈ rois[][filename]
+            roilocalizations = Vector{Vector{Localization}}()
+            for chname ∈ chnames
+                coords = extractcoordinates(locs[chname])
+                roichlocalizationsmask = inpolygon.(eachcol(coords ./ 40960), Ref(roi)) .!= 0
+                push!(roilocalizations, locs[chname][roichlocalizationsmask])
+            end
+            cr = clusdoc(chnames, roilocalizations)
+            println(cr)
         end
     end
 end
@@ -227,14 +229,14 @@ function draw_canvas(c, img, rois, newroi, nextlineposition, selectedroi)
     if haskey(rois, fileselector[])
         for (i, roi) ∈ enumerate(rois[fileselector[]])
             if i == selectedroi
-                drawroi(ctx, roi, colorant"blue")
+                drawroi(ctx, roi, colorant"red")
             else
                 drawroi(ctx, roi, colorant"gray")
             end
         end
     end
     nextpoly = nextlineposition === nothing ? newroi : [newroi; nextlineposition]
-    drawroi(ctx, nextpoly, colorant"blue", false)
+    drawroi(ctx, nextpoly, colorant"red", false)
 end
 
 function drawroi(ctx, roi, color, close = true)
@@ -282,6 +284,9 @@ function onmouseclick(btn)
                 selectedroi[] = findfirst(matches)
             else
                 selectedroi[] = findnext(matches, selectedroi[] + 1)
+                if selectedroi[] === nothing
+                    selectedroi[] = findfirst(matches)
+                end
             end
         end
     end

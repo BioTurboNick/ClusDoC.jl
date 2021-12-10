@@ -68,16 +68,6 @@ julia> @time clusdoc(path)
 134.263914 seconds (15.54 M allocations: 6.483 GiB, 1.32% gc time)
 =#
 
-
-function getlocalizations(alllocalizations::Vector{Localization}, channelname, startframe, nframes,
-    starttrimframes, endtrimframes)
-
-    lowerlimit = startframe + starttrimframes
-    upperlimit = startframe + nframes - endtrimframes - 1 # activate these limits
-
-    localizations = filter(l -> l.channel == channelname, alllocalizations)
-end
-
 function writeresultstables(channels::Vector{ChannelResult}, path)
     XLSX.openxlsx(path, mode = "w") do xf
         sheet = xf[1]
