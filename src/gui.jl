@@ -1,6 +1,9 @@
 using Gtk.ShortNames, GtkObservables, NativeFileDialog, Printf, Plots, LocalizationMicroscopy, Images, ImageIO # find out which subpackages of Images I need
 using PolygonOps
 using ClusDoC
+using XLSX
+using Statistics
+using InvertedIndices
 
 # independent observables
 inputfiles = Observable([""])
@@ -200,6 +203,7 @@ function run_clusdoc(obs)
         locs = localizations[][filename]
         chnames = sort(unique(keys(locs)))
 
+        results = Vector{ClusDoC.ChannelResult}[]
         for roi ∈ rois[][filename]
             roilocalizations = Vector{Vector{Localization}}()
             for chname ∈ chnames
@@ -208,17 +212,92 @@ function run_clusdoc(obs)
                 push!(roilocalizations, locs[chname][roichlocalizationsmask])
             end
             cr = clusdoc(chnames, roilocalizations)
+            push!(results, cr)
         end
+        writeresultstables(results, joinpath(outputfolder[], "$(filename) ClusDoC Results.xlsx"))
+
+        # next: add data saving
     end
 end
 
-#=
-roi = rois[]["realtest.bin.txt"][1]
-locs = localizations[]["realtest.bin.txt"]
-locs1 = extractcoordinates(locs[1])
-inpolygon.(eachcol(locs1 ./ 40960), Ref(roi))
+function writeresultstables(roiresults::Vector{Vector{ClusDoC.ChannelResult}}, path)
+    XLSX.openxlsx(path, mode = "w") do xf
+        sheet = xf[1]
+        XLSX.rename!(sheet, "DoC Results")
+        sheet["A1"] = "Percentage of colocalized molecules"
+        sheet["A2"] = "from\\to"
+        sheet["A3", dim = 1] = [cr.channelname for cr ∈ roiresults[1]]
+        sheet["B2"] = [cr.channelname for cr ∈ roiresults[1]]
+        for k ∈ eachindex(roiresults)
+            offset = (k - 1) * 4
+            for (i, cr) ∈ enumerate(roiresults[k])
+                for j ∈ eachindex(roiresults[k])
+                    i == j && continue
+                    sheet[2 + offset + j, 1 + i] = count(cr.docscores[j] .> 0.4) / length(cr.docscores[j])
+                end
+            end
+        end
 
-=#
+        clusterinfo_rowlength = 5
+
+        for (r, roichannels) ∈ enumerate(roiresults)
+            for (i, channel) ∈ enumerate(roichannels)
+                if r == 1
+                    XLSX.addsheet!(xf)
+                    sheet = xf[i + 1]
+                    XLSX.rename!(sheet, "Clus-DoC Results $(channel.channelname)")
+                    sheet["A1"] = "Properties of clusters by type"
+                    sheet["A2"] = "Noncolocalized"
+                    sheet["A3"] = "Number of clusters"
+                    sheet["B3"] = "Number of localizations per cluster"
+                    sheet["C3"] = "Area"
+                    sheet["D3"] = "Circularity"
+                    sheet["E3"] = "Relative density / granularity"
+                else
+                    sheet = xf[i + 1]
+                end
+
+                all_colocalized_indexes = []
+                k = 1
+                for (j, channel2) ∈ enumerate(roichannels)
+                    i == j && continue
+                    offset = clusterinfo_rowlength * k + 1
+                    if r == 1
+                        sheet[2, offset] = "Colocalized with $(channel2.channelname)"
+                        sheet[3, offset] = "Number of clusters"
+                        sheet[3, offset + 1] = "Number of localizations per cluster"
+                        sheet[3, offset + 2] = "Area"
+                        sheet[3, offset + 3] = "Circularity"
+                        sheet[3, offset + 4] = "Relative density / granularity"
+                    end
+
+                    #clusterpoints = union(c.core_indices, c.po)
+                    colocalized_indexes = findall([count(channel.docscores[j][c.core_indices] .> 0.4) > 5 for c ∈ channel.clusters])
+                    union!(all_colocalized_indexes, colocalized_indexes)
+                    sheet[3 + r, offset] = length(colocalized_indexes)
+                    sizes = [c.size for c ∈ channel.clusters[colocalized_indexes]]
+                    meansize = mean(sizes)
+                    sheet[3 + r, offset + 1] = isnan(meansize) ? "" : meansize
+                    sheet[3 + r, offset + 2] = mean(channel.clusterareas[colocalized_indexes])
+                    sheet[3 + r, offset + 3] = mean(channel.clustercircularities[colocalized_indexes])
+                    #meandensities = [chann.densities[] for c ∈ channel.clusters[colocalized_indexes]]
+                    #sheet[3, offset + 4] = next step is how to get relative densities back...
+
+                    k += 1
+                end
+
+                noncolocalized_indexes = Not(all_colocalized_indexes)            
+                sheet[3 + r, 1] = length(channel.clusters) - length(all_colocalized_indexes)
+                sizes = [c.size for c ∈ channel.clusters[noncolocalized_indexes]]
+                meansize = mean(sizes)
+                sheet[3 + r, 2] = isnan(meansize) ? "" : meansize
+                sheet[3 + r, 3] = mean(channel.clusterareas[noncolocalized_indexes])
+                sheet[3 + r, 4] = mean(channel.clustercircularities[noncolocalized_indexes])
+                # # sheet[3, offset + 4] = 
+            end
+        end
+    end
+end
 
 function draw_canvas(c, img, rois, newroi, nextlineposition, selectedroi)
     img !== nothing || return
