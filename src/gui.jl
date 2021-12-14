@@ -105,9 +105,7 @@ function drawplots(_)
             Plots.scatter!(chpoints[1, :], chpoints[2, :], markercolor = colors[i], markeralpha = 0.5, markersize = 4, aspectratio = :equal, size=(2048, 2048), markerstrokewidth = 0)
         end
         Plots.plot!(ticks=:none, legend = :none, axis = false, widen = false, margin=-2(Plots.mm)) # change margin when Plots is updated
-        path = joinpath(outputfolder[], "localizationmaps")
-        mkpath(path)
-        imagepath = joinpath(path, filename * ".png")
+        imagepath = joinpath(outputfolder[], filename * ".png")
         Plots.savefig(imagepath)
         # could probably generate plots, but delay saving until an output folder selected.
     end
@@ -118,7 +116,7 @@ function load_image(obs)
     obs === nothing && return
     try
         # may fire before images created
-        selectedimg[] = load(joinpath(outputfolder[], "localizationmaps", obs * ".png"))
+        selectedimg[] = load(joinpath(outputfolder[], obs * ".png"))
     catch ex
         if !(ex isa ArgumentError)
             rethrow()
@@ -197,6 +195,8 @@ function load_rois(obs)
     rois[] = roidict
 end
 
+resultvar = nothing
+
 function run_clusdoc(obs)
     for inputfile ∈ inputfiles[]
         filename = basename(inputfile)
@@ -204,7 +204,8 @@ function run_clusdoc(obs)
         chnames = sort(unique(keys(locs)))
 
         results = Vector{ClusDoC.ChannelResult}[]
-        for roi ∈ rois[][filename]
+        for (i, roi) ∈ enumerate(rois[][filename])
+            roi = [(x, 1 - y) for (x, y) ∈ roi] # invert y to match localization coordinates - but actually I might need to invert the original image instead
             roilocalizations = Vector{Vector{Localization}}()
             for chname ∈ chnames
                 coords = extractcoordinates(locs[chname])
@@ -212,11 +213,60 @@ function run_clusdoc(obs)
                 push!(roilocalizations, locs[chname][roichlocalizationsmask])
             end
             cr = clusdoc(chnames, roilocalizations)
+
+            generate_localization_maps(cr, filename, i, chnames)
+            generate_doc_maps(cr, filename, i, chnames)
+            generate_cluster_maps(cr, filename, i, chnames)
+
             push!(results, cr)
         end
         writeresultstables(results, joinpath(outputfolder[], "$(filename) ClusDoC Results.xlsx"))
+        global resultvar = results
+        # should save: localization map with ROIs shown
+        # next: generate plots of DoC scores etc.
+    end
+end
 
-        # next: add data saving
+function generate_localization_maps(cr::Vector{ClusDoC.ChannelResult}, filename, i, chnames)
+    xmin, xmax = minimum(minimum(c.coordinates[1,:] for c ∈ cr)), maximum(maximum(c.coordinates[1,:] for c ∈ cr))
+    ymin, ymax = minimum(minimum(c.coordinates[2,:] for c ∈ cr)), maximum(maximum(c.coordinates[2,:] for c ∈ cr))
+    for j ∈ eachindex(cr)
+        scatter(cr[j].coordinates[1,:], cr[j].coordinates[2,:], markercolor = colors[j], markersize = 4, alpha = 0.5, markerstrokewidth = 0)
+        plot!(size=(2048,2048), legend = :none, aspectratio = :equal, axis = false, ticks = false, xlims = (xmin, xmax), ylims = (ymin, ymax))
+        path = joinpath(outputfolder[], "localization maps")
+        mkpath(path)
+        imagepath = joinpath(path, filename * " region $i " * chnames[j] * ".png")
+        savefig(imagepath)
+    end
+end
+
+function generate_doc_maps(cr::Vector{ClusDoC.ChannelResult}, filename, i, chnames)
+    xmin, xmax = minimum(minimum(c.coordinates[1,:] for c ∈ cr)), maximum(maximum(c.coordinates[1,:] for c ∈ cr))
+    ymin, ymax = minimum(minimum(c.coordinates[2,:] for c ∈ cr)), maximum(maximum(c.coordinates[2,:] for c ∈ cr))
+    for j ∈ eachindex(cr)
+        for k ∈ eachindex(cr)
+            k != j || continue
+            scatter(cr[j].coordinates[1,:], cr[j].coordinates[2,:], markerz = cr[j].docscores[k], markersize = 4, alpha = 0.5, markerstrokewidth = 0)
+            plot!(size=(2048,2048), legend = :none, aspectratio = :equal, axis = false, ticks = false, xlims = (xmin, xmax), ylims = (ymin, ymax))
+            path = joinpath(outputfolder[], "doc maps")
+            mkpath(path)
+            imagepath = joinpath(path, filename * " region $i " * chnames[j] * " to " * chnames[k] * ".png")
+            savefig(imagepath)
+        end
+    end
+end
+
+function generate_cluster_maps(cr::Vector{ClusDoC.ChannelResult}, filename, i, chnames)
+    xmin, xmax = minimum(minimum(c.coordinates[1,:] for c ∈ cr)), maximum(maximum(c.coordinates[1,:] for c ∈ cr))
+    ymin, ymax = minimum(minimum(c.coordinates[2,:] for c ∈ cr)), maximum(maximum(c.coordinates[2,:] for c ∈ cr))
+    for j ∈ eachindex(cr)
+        scatter(cr[j].coordinates[1,:], cr[j].coordinates[2,:], color = :gray, markersize = 4, alpha = 0.1)
+        plot!(size=(2048,2048), legend = :none, aspectratio = :equal, axis = false, ticks = false, xlims = (xmin, xmax), ylims = (ymin, ymax))
+        [plot!(ai, lw = 5, linecolor = colors[j]) for ai in cr[j].clustercontours]
+        path = joinpath(outputfolder[], "cluster maps")
+        mkpath(path)
+        imagepath = joinpath(path, filename * " region $i " * chnames[j] * ".png")
+        savefig(imagepath)
     end
 end
 
@@ -225,15 +275,12 @@ function writeresultstables(roiresults::Vector{Vector{ClusDoC.ChannelResult}}, p
         sheet = xf[1]
         XLSX.rename!(sheet, "DoC Results")
         sheet["A1"] = "Percentage of colocalized molecules"
-        sheet["A2"] = "from\\to"
-        sheet["A3", dim = 1] = [cr.channelname for cr ∈ roiresults[1]]
-        sheet["B2"] = [cr.channelname for cr ∈ roiresults[1]]
+        sheet["A2"] = ["$x -> $y" for x ∈ [cr.channelname for cr ∈ roiresults[1]] for y ∈ [cr.channelname for cr ∈ roiresults[1]] if x != y]
         for k ∈ eachindex(roiresults)
-            offset = (k - 1) * 4
             for (i, cr) ∈ enumerate(roiresults[k])
                 for j ∈ eachindex(roiresults[k])
                     i == j && continue
-                    sheet[2 + offset + j, 1 + i] = count(cr.docscores[j] .> 0.4) / length(cr.docscores[j])
+                    sheet[2 + k, 1 + (j - 1) * i] = count(cr.docscores[j] .> 0.4) / length(cr.docscores[j])
                 end
             end
         end
@@ -280,8 +327,7 @@ function writeresultstables(roiresults::Vector{Vector{ClusDoC.ChannelResult}}, p
                     sheet[3 + r, offset + 1] = isnan(meansize) ? "" : meansize
                     sheet[3 + r, offset + 2] = mean(channel.clusterareas[colocalized_indexes])
                     sheet[3 + r, offset + 3] = mean(channel.clustercircularities[colocalized_indexes])
-                    #meandensities = [chann.densities[] for c ∈ channel.clusters[colocalized_indexes]]
-                    #sheet[3, offset + 4] = next step is how to get relative densities back...
+                    sheet[3 + r, offset + 4] = mean([mean(channel.densities[c.core_indices]) / (c.size / meansize) for c ∈ channel.clusters[colocalized_indexes]])
 
                     k += 1
                 end
@@ -293,7 +339,7 @@ function writeresultstables(roiresults::Vector{Vector{ClusDoC.ChannelResult}}, p
                 sheet[3 + r, 2] = isnan(meansize) ? "" : meansize
                 sheet[3 + r, 3] = mean(channel.clusterareas[noncolocalized_indexes])
                 sheet[3 + r, 4] = mean(channel.clustercircularities[noncolocalized_indexes])
-                # # sheet[3, offset + 4] = 
+                sheet[3 + r, 5] = mean([mean(channel.densities[c.core_indices]) / (c.size / meansize) for c ∈ channel.clusters[noncolocalized_indexes]])
             end
         end
     end

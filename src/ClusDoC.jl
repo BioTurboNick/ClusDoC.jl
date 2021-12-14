@@ -118,8 +118,7 @@ function writeresultstables(channels::Vector{ChannelResult}, path)
                 sheet[4, offset + 1] = isnan(meansize) ? "" : meansize
                 sheet[4, offset + 2] = mean(channel.clusterareas[colocalized_indexes])
                 sheet[4, offset + 3] = mean(channel.clustercircularities[colocalized_indexes])
-                #meandensities = [chann.densities[] for c ∈ channel.clusters[colocalized_indexes]]
-                #sheet[3, offset + 4] = next step is how to get relative densities back...
+                sheet[4, offset + 4] = [mean(channel.densities[c.core_indices]) / (channel.clusternpoints / meansize) for c ∈ channel.clusters[colocalized_indexes]]
 
                 k += 1
             end
