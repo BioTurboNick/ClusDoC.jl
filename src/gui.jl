@@ -142,10 +142,6 @@ function save_rois(obs)
     outputfolder !== "" || return
     roifile = joinpath(outputfolder[], "roicoordinates.txt")
 
-    if isfile(roifile)
-        error("file already exists; delete it in order to save")
-    end
-
     open(roifile, "w") do f
         for (filename, filerois) ∈ rois[]
             write(f, "#", filename, "\n")
@@ -212,16 +208,16 @@ function run_clusdoc(obs)
                 roichlocalizationsmask = inpolygon.(eachcol(coords ./ 40960), Ref(roi)) .!= 0
                 push!(roilocalizations, locs[chname][roichlocalizationsmask])
             end
-            cr = clusdoc(chnames, roilocalizations)
+            cr = clusdoc(chnames, roilocalizations, abs(PolygonOps.area(roi) * 40960 * 40960))
+
+            push!(results, cr)
+            global resultvar = results
 
             generate_localization_maps(cr, filename, i, chnames)
             generate_doc_maps(cr, filename, i, chnames)
             generate_cluster_maps(cr, filename, i, chnames)
-
-            push!(results, cr)
         end
         writeresultstables(results, joinpath(outputfolder[], "$(filename) ClusDoC Results.xlsx"))
-        global resultvar = results
         # should save: localization map with ROIs shown
         # next: generate plots of DoC scores etc.
     end
@@ -304,6 +300,8 @@ function writeresultstables(roiresults::Vector{Vector{ClusDoC.ChannelResult}}, p
                     sheet = xf[i + 1]
                 end
 
+                minclusterpoints = 10 # clusters with fewer points than this are ignored, and clusers must have at least this many colocalized points to be considered colocalized
+
                 all_colocalized_indexes = []
                 k = 1
                 for (j, channel2) ∈ enumerate(roichannels)
@@ -319,27 +317,36 @@ function writeresultstables(roiresults::Vector{Vector{ClusDoC.ChannelResult}}, p
                     end
 
                     #clusterpoints = union(c.core_indices, c.po)
-                    colocalized_indexes = findall([count(channel.docscores[j][c.core_indices] .> 0.4) > 5 for c ∈ channel.clusters])
+                    colocalized_indexes = findall([count(channel.docscores[j][c.core_indices] .> 0.4) ≥ minclusterpoints for c ∈ channel.clusters])
                     union!(all_colocalized_indexes, colocalized_indexes)
                     sheet[3 + r, offset] = length(colocalized_indexes)
+                    length(colocalized_indexes) > 0 || continue
+
                     sizes = [c.size for c ∈ channel.clusters[colocalized_indexes]]
                     meansize = mean(sizes)
-                    sheet[3 + r, offset + 1] = isnan(meansize) ? "" : meansize
-                    sheet[3 + r, offset + 2] = mean(channel.clusterareas[colocalized_indexes])
-                    sheet[3 + r, offset + 3] = mean(channel.clustercircularities[colocalized_indexes])
-                    sheet[3 + r, offset + 4] = mean([mean(channel.densities[c.core_indices]) / (c.size / meansize) for c ∈ channel.clusters[colocalized_indexes]])
+                    sheet[3 + r, offset + 1] = isnan(meansize) ? "" : meansize # XLSX creates a fixable error in the output with NaN values
+                    meanarea = mean(channel.clusterareas[colocalized_indexes])
+                    sheet[3 + r, offset + 2] = isnan(meanarea) ? "" : meanarea
+                    meancircularity = mean(channel.clustercircularities[colocalized_indexes])
+                    sheet[3 + r, offset + 3] = isnan(meancircularity) ? "" : meancircularity
+                    meandensity = mean([mean(channel.densities[c.core_indices]) / channel.roidensity for (i, c) ∈ enumerate(channel.clusters[colocalized_indexes])])
+                    sheet[3 + r, offset + 4] = isnan(meandensity) ? "" : meandensity
 
                     k += 1
                 end
 
-                noncolocalized_indexes = Not(all_colocalized_indexes)            
-                sheet[3 + r, 1] = length(channel.clusters) - length(all_colocalized_indexes)
+                noncolocalized_indexes = setdiff!(findall([length(c.core_indices) ≥ minclusterpoints for c ∈ channel.clusters]), all_colocalized_indexes)
+                sheet[3 + r, 1] = length(noncolocalized_indexes)
                 sizes = [c.size for c ∈ channel.clusters[noncolocalized_indexes]]
+                length(all_colocalized_indexes) < length(channel.clusters) || continue
                 meansize = mean(sizes)
-                sheet[3 + r, 2] = isnan(meansize) ? "" : meansize
-                sheet[3 + r, 3] = mean(channel.clusterareas[noncolocalized_indexes])
-                sheet[3 + r, 4] = mean(channel.clustercircularities[noncolocalized_indexes])
-                sheet[3 + r, 5] = mean([mean(channel.densities[c.core_indices]) / (c.size / meansize) for c ∈ channel.clusters[noncolocalized_indexes]])
+                sheet[3 + r, 2] = isnan(meansize) ? "" : meansize # XLSX creates a fixable error in the output with NaN values
+                meanarea = mean(channel.clusterareas[noncolocalized_indexes])
+                sheet[3 + r, 3] = isnan(meanarea) ? "" : meanarea
+                meancircularity = mean(channel.clustercircularities[noncolocalized_indexes])
+                sheet[3 + r, 4] = isnan(meancircularity) ? "" : meancircularity
+                meandensity = mean([mean(channel.densities[c.core_indices]) / channel.roidensity for (i, c) ∈ enumerate(channel.clusters[noncolocalized_indexes])])
+                sheet[3 + r, 5] = isnan(meandensity) ? "" : meandensity
             end
         end
     end

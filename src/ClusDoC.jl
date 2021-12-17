@@ -55,8 +55,8 @@ function clusdoc(path, outputpath)
     return cr
 end
 
-function clusdoc(channelnames, localizations)
-    cr = doc(channelnames, localizations, 20, 500, 10, 40960*40960)
+function clusdoc(channelnames, localizations, roiarea)
+    cr = doc(channelnames, localizations, 20, 500, 10, roiarea)
     dbscan!(cr, 20, 3, true, 20)
     smooth!(cr, 20, 15)
     return cr

@@ -22,10 +22,8 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
         throw(ArgumentError("$(:localradius) must be positive and less than $(:radiusmax); got $localradius, $radiusmax"))
     0 < radiusstep < radiusmax ||
         throw(ArgumentError("$(:radiusstep) must be positive and less than $(:radiusmax); got $radiuistep, $radiusmax"))
-    π * radiusmax ^ 2 ≤ roiarea ||
-        throw(ArgumentError("$(:radiusmax) must describe a circle with area smaller than $(:roiarea); got $radiusmax"))
 
-    channels = ChannelResult.(channelnames, extractcoordinates.(localizations), nothing, nothing, nothing, nothing, nothing)
+    channels = ChannelResult.(channelnames, extractcoordinates.(localizations), nothing, nothing, nothing, nothing, length.(localizations) ./ roiarea)
     #=
     The algorithm for coordinate-based colocalization (doi: 10.1007/s00418-011-0880-5) is:
     1. For each localization, count the number of localizations (other than itself) within a given radius for each channel.
