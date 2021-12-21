@@ -226,6 +226,7 @@ function run_clusdoc(obs)
         # should probably switch to DataFrames
         # should restructure non-UI code into own files
         # should have rois automatically save and load (if possible)
+        # consider padding that rois can be drawn in
     end
 end
 
