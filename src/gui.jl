@@ -222,7 +222,10 @@ function run_clusdoc(obs)
         
         writeresultstables(results, joinpath(outputfolder[], "$(filename) ClusDoC Results.xlsx"))
         # should save: localization map with ROIs shown
-        # next: generate plots of DoC scores etc.
+        # need to save point data
+        # should probably switch to DataFrames
+        # should restructure non-UI code into own files
+        # should have rois automatically save and load (if possible)
     end
 end
 
@@ -370,8 +373,6 @@ function writeresultstables(roiresults::Vector{Vector{ClusDoC.ChannelResult}}, p
                 ###  In the original, the average density was determined by the rectangular range between min and max point coordinates for the area
                 ### A benefit of that is that if your ROI overshoots, you will end up with the same area regardless. But it also means that non-square ROIs
                 ### will underestimate average density by a lot. I should just stick with the actual area, which I'm doing now.
-                
-                # maybe I should add a bit of padding to the image to allow ROIs to catch the edge
             end
         end
     end
