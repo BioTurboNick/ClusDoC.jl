@@ -23,7 +23,7 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
     0 < radiusstep < radiusmax ||
         throw(ArgumentError("$(:radiusstep) must be positive and less than $(:radiusmax); got $radiuistep, $radiusmax"))
 
-    channels = ChannelResult.(channelnames, extractcoordinates.(localizations), nothing, nothing, nothing, nothing, length.(localizations) ./ roiarea)
+    channels = ChannelResult.(channelnames, extractcoordinates.(localizations), nothing, nothing, nothing, nothing, nothing)
     #=
     The algorithm for coordinate-based colocalization (doi: 10.1007/s00418-011-0880-5) is:
     1. For each localization, count the number of localizations (other than itself) within a given radius for each channel.
@@ -48,10 +48,9 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
         # determine which localizations have more neighbors than expected by chance
         nneighbors = inrangecount(allneighbortree, c.coordinates, localradius)
         ntotal = size(allcoordinates, 2) - 1 # remove self
-        c.equivalentradius = equivalentradius.(nneighbors, ntotal, roiarea)
+        c.equivalentradius = equivalentradius.(nneighbors .- 1, ntotal, roiarea)
         c.abovethreshold = c.equivalentradius .> localradius # maybe can replace with simple number threshold though, if don't need to compare across channels
         c.densities = pointdensity.(nneighbors, localradius)
-
         # calculate density gradient for each point vs. neighbors in each other channel
         distributions = Vector(undef, length(channels))
         for j ∈ eachindex(channels)
@@ -61,15 +60,15 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
         end
 
         # compute degree of colocalization
+        # original sets any NaNs to 0. I'm setting them to -1 because "nothing anywhere nearby" is as anticorrelated as it can get.
         c.docscores = Vector(undef, length(channels))
         for j ∈ eachindex(channels)
             spearmancoefficient = [corspearman(distributions[i][k, :], distributions[j][k, :]) for k ∈ 1:count(c.abovethreshold)]
             _, nearestdistance = nn(ctrees[j], c.coordinates[:, c.abovethreshold])
             c.docscores[j] = spearmancoefficient .* exp.(-nearestdistance ./ radiussteps[end])
+            c.docscores[j][isnan.(c.docscores)] = -1
         end
     end
-
-    # original sets any NaNs in SA1/2 to 0
 
     return channels
     # original ends a stopwatch here

@@ -22,7 +22,7 @@ function dbscan!(channels::Vector{ChannelResult}, epsilon, minpoints, uselocalra
             c.equivalentradius = equivalentradius.(nneighbors, ntotal, roiarea)
             c.abovethreshold = c.equivalentradius .> localradius # maybe can replace with simple number threshold though, if don't need to compare across channels
         end
-        
-        c.clusters = Clustering.dbscan(c.coordinates, epsilon, min_cluster_size = minpoints)
+        coordinates = uselocalradius_threshold ? c.coordinates[:, c.abovethreshold] : c.coordinates
+        c.clusters = Clustering.dbscan(coordinates, epsilon, min_cluster_size = minpoints)
     end
 end

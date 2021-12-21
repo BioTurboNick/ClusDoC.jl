@@ -64,7 +64,9 @@ end
 
 function set_outputfolder(_)
     path = pick_folder()
-    outputfolder[] = path == "" ? "" : joinpath(path, "ClusDoC Results")
+    if path != ""
+        outputfolder[] = joinpath(path, "ClusDoC Results")
+    end
 end
 
 function populate_fileselector(obs)
@@ -191,35 +193,39 @@ function load_rois(obs)
     rois[] = roidict
 end
 
-resultvar = nothing
+resultsvar = nothing
 
 function run_clusdoc(obs)
-    for inputfile ∈ inputfiles[]
-        filename = basename(inputfile)
-        locs = localizations[][filename]
-        chnames = sort(unique(keys(locs)))
+    try
+        for inputfile ∈ inputfiles[]
+            filename = basename(inputfile)
+            locs = localizations[][filename]
+            chnames = sort(unique(keys(locs)))
 
-        results = Vector{ClusDoC.ChannelResult}[]
-        for (i, roi) ∈ enumerate(rois[][filename])
-            roi = [(x, 1 - y) for (x, y) ∈ roi] # invert y to match localization coordinates - but actually I might need to invert the original image instead
-            roilocalizations = Vector{Vector{Localization}}()
-            for chname ∈ chnames
-                coords = extractcoordinates(locs[chname])
-                roichlocalizationsmask = inpolygon.(eachcol(coords ./ 40960), Ref(roi)) .!= 0
-                push!(roilocalizations, locs[chname][roichlocalizationsmask])
+            results = Vector{ClusDoC.ChannelResult}[]
+            for (i, roi) ∈ enumerate(rois[][filename])
+                roi = [(x, 1 - y) for (x, y) ∈ roi] # invert y to match localization coordinates - but actually I might need to invert the original image instead
+                roilocalizations = Vector{Vector{Localization}}()
+                for chname ∈ chnames
+                    coords = extractcoordinates(locs[chname])
+                    roichlocalizationsmask = inpolygon.(eachcol(coords ./ 40960), Ref(roi)) .!= 0
+                    push!(roilocalizations, locs[chname][roichlocalizationsmask])
+                end
+                cr = clusdoc(chnames, roilocalizations, abs(PolygonOps.area(roi) * 40960 * 40960))
+                push!(results, cr)
+                global resultsvar = results
+                generate_localization_maps(cr, filename, i, chnames)
+                generate_doc_maps(cr, filename, i, chnames)
+                generate_cluster_maps(cr, filename, i, chnames)
+                generate_doc_histograms(cr, filename, i, chnames)
             end
-            cr = clusdoc(chnames, roilocalizations, abs(PolygonOps.area(roi) * 40960 * 40960))
-
-            push!(results, cr)
-            global resultvar = results
-
-            generate_localization_maps(cr, filename, i, chnames)
-            generate_doc_maps(cr, filename, i, chnames)
-            generate_cluster_maps(cr, filename, i, chnames)
+            
+            writeresultstables(results, joinpath(outputfolder[], "$(filename) ClusDoC Results.xlsx"))
+            # should save: localization map with ROIs shown
+            # next: generate plots of DoC scores etc.
         end
-        writeresultstables(results, joinpath(outputfolder[], "$(filename) ClusDoC Results.xlsx"))
-        # should save: localization map with ROIs shown
-        # next: generate plots of DoC scores etc.
+    catch ex
+        println(ex) # why do errors get swallowed?
     end
 end
 
@@ -227,7 +233,7 @@ function generate_localization_maps(cr::Vector{ClusDoC.ChannelResult}, filename,
     xmin, xmax = minimum(minimum(c.coordinates[1,:] for c ∈ cr)), maximum(maximum(c.coordinates[1,:] for c ∈ cr))
     ymin, ymax = minimum(minimum(c.coordinates[2,:] for c ∈ cr)), maximum(maximum(c.coordinates[2,:] for c ∈ cr))
     for j ∈ eachindex(cr)
-        scatter(cr[j].coordinates[1,:], cr[j].coordinates[2,:], markercolor = colors[j], markersize = 4, alpha = 0.5, markerstrokewidth = 0)
+        scatter(cr[j].coordinates[1, :], cr[j].coordinates[2, :], markercolor = colors[j], markersize = 4, alpha = 0.5, markerstrokewidth = 0)
         plot!(size=(2048,2048), legend = :none, aspectratio = :equal, axis = false, ticks = false, xlims = (xmin, xmax), ylims = (ymin, ymax))
         path = joinpath(outputfolder[], "localization maps")
         mkpath(path)
@@ -242,7 +248,7 @@ function generate_doc_maps(cr::Vector{ClusDoC.ChannelResult}, filename, i, chnam
     for j ∈ eachindex(cr)
         for k ∈ eachindex(cr)
             k != j || continue
-            scatter(cr[j].coordinates[1,:], cr[j].coordinates[2,:], markerz = cr[j].docscores[k], markersize = 4, alpha = 0.5, markerstrokewidth = 0)
+            scatter(cr[j].coordinates[1, cr[j].abovethreshold], cr[j].coordinates[2, cr[j].abovethreshold], markerz = cr[j].docscores[k], markersize = 4, alpha = 0.5, markerstrokewidth = 0)
             plot!(size=(2048,2048), legend = :none, aspectratio = :equal, axis = false, ticks = false, xlims = (xmin, xmax), ylims = (ymin, ymax))
             path = joinpath(outputfolder[], "doc maps")
             mkpath(path)
@@ -256,13 +262,27 @@ function generate_cluster_maps(cr::Vector{ClusDoC.ChannelResult}, filename, i, c
     xmin, xmax = minimum(minimum(c.coordinates[1,:] for c ∈ cr)), maximum(maximum(c.coordinates[1,:] for c ∈ cr))
     ymin, ymax = minimum(minimum(c.coordinates[2,:] for c ∈ cr)), maximum(maximum(c.coordinates[2,:] for c ∈ cr))
     for j ∈ eachindex(cr)
-        scatter(cr[j].coordinates[1,:], cr[j].coordinates[2,:], color = :gray, markersize = 4, alpha = 0.1)
+        scatter(cr[j].coordinates[1, :], cr[j].coordinates[2, :], color = :gray, markersize = 4, alpha = 0.1)
         plot!(size=(2048,2048), legend = :none, aspectratio = :equal, axis = false, ticks = false, xlims = (xmin, xmax), ylims = (ymin, ymax))
         [plot!(ai, lw = 5, linecolor = colors[j]) for ai in cr[j].clustercontours]
         path = joinpath(outputfolder[], "cluster maps")
         mkpath(path)
         imagepath = joinpath(path, filename * " region $i " * chnames[j] * ".png")
         savefig(imagepath)
+    end
+end
+
+function generate_doc_histograms(cr::Vector{ClusDoC.ChannelResult}, filename, i, chnames)
+    # what to do about huge spike at -1?
+    for j ∈ eachindex(cr)
+        for k ∈ eachindex(cr)
+            j != k || continue
+            histogram(cr[j].docscores[k], fillcolor = colors[j], bins = 50, size = (1024, 256), legend = :none, xlabel = "Degree of Colocalization", ylabel = "Frequency")
+            path = joinpath(outputfolder[], "doc histograms")
+            mkpath(path)
+            imagepath = joinpath(path, filename * " region $i " * chnames[j] * ".png")
+            savefig(imagepath)
+        end
     end
 end
 
@@ -301,7 +321,6 @@ function writeresultstables(roiresults::Vector{Vector{ClusDoC.ChannelResult}}, p
                 end
 
                 minclusterpoints = 10 # clusters with fewer points than this are ignored, and clusers must have at least this many colocalized points to be considered colocalized
-
                 all_colocalized_indexes = []
                 k = 1
                 for (j, channel2) ∈ enumerate(roichannels)
@@ -347,6 +366,12 @@ function writeresultstables(roiresults::Vector{Vector{ClusDoC.ChannelResult}}, p
                 sheet[3 + r, 4] = isnan(meancircularity) ? "" : meancircularity
                 meandensity = mean([mean(channel.densities[c.core_indices]) / channel.roidensity for (i, c) ∈ enumerate(channel.clusters[noncolocalized_indexes])])
                 sheet[3 + r, 5] = isnan(meandensity) ? "" : meandensity
+
+                ###  In the original, the average density was determined by the rectangular range between min and max point coordinates for the area
+                ### A benefit of that is that if your ROI overshoots, you will end up with the same area regardless. But it also means that non-square ROIs
+                ### will underestimate average density by a lot. I should just stick with the actual area, which I'm doing now.
+                
+                # maybe I should add a bit of padding to the image to allow ROIs to catch the edge
             end
         end
     end

@@ -4,7 +4,8 @@ function smooth!(cr, epsilon, smoothingradius)
     for (i, cc) ∈ enumerate(cr)
         cc.clusternpoints = [cluster.size for cluster ∈ cc.clusters]
         sigmas = smoothingradius
-        clustercoordinates = [@view cc.coordinates[:, union(cluster.core_indices, cluster.boundary_indices)] for cluster ∈ cc.clusters]
+        cccoordinates = @view cc.coordinates[:, cc.abovethreshold]
+        clustercoordinates = [@view cccoordinates[:, union(cluster.core_indices, cluster.boundary_indices)] for cluster ∈ cc.clusters]
         is2d = any((@view clustercoordinates[3, :]) .!= 0)
         if is2d
             clustercoordinates = [@view cluster[1:2, :] for cluster ∈ clustercoordinates]
