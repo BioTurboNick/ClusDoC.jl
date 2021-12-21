@@ -23,7 +23,7 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
     0 < radiusstep < radiusmax ||
         throw(ArgumentError("$(:radiusstep) must be positive and less than $(:radiusmax); got $radiuistep, $radiusmax"))
 
-    channels = ChannelResult.(channelnames, extractcoordinates.(localizations), nothing, nothing, nothing, nothing, nothing)
+    channels = ChannelResult.(channelnames, extractcoordinates.(localizations), nothing, nothing, nothing, nothing, length.(localizations) ./ roiarea)
     #=
     The algorithm for coordinate-based colocalization (doi: 10.1007/s00418-011-0880-5) is:
     1. For each localization, count the number of localizations (other than itself) within a given radius for each channel.
@@ -66,7 +66,7 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
             spearmancoefficient = [corspearman(distributions[i][k, :], distributions[j][k, :]) for k ∈ 1:count(c.abovethreshold)]
             _, nearestdistance = nn(ctrees[j], c.coordinates[:, c.abovethreshold])
             c.docscores[j] = spearmancoefficient .* exp.(-nearestdistance ./ radiussteps[end])
-            c.docscores[j][isnan.(c.docscores)] = -1
+            c.docscores[j][isnan.(c.docscores[j])] .= -1
         end
     end
 

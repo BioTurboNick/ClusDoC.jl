@@ -196,38 +196,37 @@ end
 resultsvar = nothing
 
 function run_clusdoc(obs)
-    try
-        for inputfile ∈ inputfiles[]
-            filename = basename(inputfile)
-            locs = localizations[][filename]
-            chnames = sort(unique(keys(locs)))
+    isempty(rois[]) && return
+    for inputfile ∈ inputfiles[]
+        filename = basename(inputfile)
+        locs = localizations[][filename]
+        chnames = sort(unique(keys(locs)))
 
-            results = Vector{ClusDoC.ChannelResult}[]
-            for (i, roi) ∈ enumerate(rois[][filename])
-                roi = [(x, 1 - y) for (x, y) ∈ roi] # invert y to match localization coordinates - but actually I might need to invert the original image instead
-                roilocalizations = Vector{Vector{Localization}}()
-                for chname ∈ chnames
-                    coords = extractcoordinates(locs[chname])
-                    roichlocalizationsmask = inpolygon.(eachcol(coords ./ 40960), Ref(roi)) .!= 0
-                    push!(roilocalizations, locs[chname][roichlocalizationsmask])
-                end
-                cr = clusdoc(chnames, roilocalizations, abs(PolygonOps.area(roi) * 40960 * 40960))
-                push!(results, cr)
-                global resultsvar = results
-                generate_localization_maps(cr, filename, i, chnames)
-                generate_doc_maps(cr, filename, i, chnames)
-                generate_cluster_maps(cr, filename, i, chnames)
-                generate_doc_histograms(cr, filename, i, chnames)
+        results = Vector{ClusDoC.ChannelResult}[]
+        for (i, roi) ∈ enumerate(rois[][filename])
+            roi = [(x, 1 - y) for (x, y) ∈ roi] # invert y to match localization coordinates - but actually I might need to invert the original image instead
+            roilocalizations = Vector{Vector{Localization}}()
+            for chname ∈ chnames
+                coords = extractcoordinates(locs[chname])
+                roichlocalizationsmask = inpolygon.(eachcol(coords ./ 40960), Ref(roi)) .!= 0
+                push!(roilocalizations, locs[chname][roichlocalizationsmask])
             end
-            
-            writeresultstables(results, joinpath(outputfolder[], "$(filename) ClusDoC Results.xlsx"))
-            # should save: localization map with ROIs shown
-            # next: generate plots of DoC scores etc.
+            cr = clusdoc(chnames, roilocalizations, abs(PolygonOps.area(roi) * 40960 * 40960))
+            push!(results, cr)
+            global resultsvar = results
+            generate_localization_maps(cr, filename, i, chnames)
+            generate_doc_maps(cr, filename, i, chnames)
+            generate_cluster_maps(cr, filename, i, chnames)
+            generate_doc_histograms(cr, filename, i, chnames)
         end
-    catch ex
-        println(ex) # why do errors get swallowed?
+        
+        writeresultstables(results, joinpath(outputfolder[], "$(filename) ClusDoC Results.xlsx"))
+        # should save: localization map with ROIs shown
+        # next: generate plots of DoC scores etc.
     end
 end
+
+errs = nothing
 
 function generate_localization_maps(cr::Vector{ClusDoC.ChannelResult}, filename, i, chnames)
     xmin, xmax = minimum(minimum(c.coordinates[1,:] for c ∈ cr)), maximum(maximum(c.coordinates[1,:] for c ∈ cr))
@@ -277,7 +276,7 @@ function generate_doc_histograms(cr::Vector{ClusDoC.ChannelResult}, filename, i,
     for j ∈ eachindex(cr)
         for k ∈ eachindex(cr)
             j != k || continue
-            histogram(cr[j].docscores[k], fillcolor = colors[j], bins = 50, size = (1024, 256), legend = :none,
+            histogram(cr[j].docscores[k], fillcolor = colors[j], bins = 100, size = (1024, 256), legend = :none,
                 xlabel = "Degree of Colocalization", ylabel = "Frequency", margin = 6Plots.mm, widen = false)
             path = joinpath(outputfolder[], "doc histograms")
             mkpath(path)
