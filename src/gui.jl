@@ -277,7 +277,8 @@ function generate_doc_histograms(cr::Vector{ClusDoC.ChannelResult}, filename, i,
     for j ∈ eachindex(cr)
         for k ∈ eachindex(cr)
             j != k || continue
-            histogram(cr[j].docscores[k], fillcolor = colors[j], bins = 50, size = (1024, 256), legend = :none, xlabel = "Degree of Colocalization", ylabel = "Frequency")
+            histogram(cr[j].docscores[k], fillcolor = colors[j], bins = 50, size = (1024, 256), legend = :none,
+                xlabel = "Degree of Colocalization", ylabel = "Frequency", margin = 6Plots.mm, widen = false)
             path = joinpath(outputfolder[], "doc histograms")
             mkpath(path)
             imagepath = joinpath(path, filename * " region $i " * chnames[j] * ".png")
