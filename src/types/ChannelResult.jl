@@ -1,17 +1,9 @@
 mutable struct ChannelResult
     channelname
     coordinates
-    densities
-    equivalentradius
-    abovethreshold
-    docscores
     roidensity
-    clusters
-    clusternpoints
-    clusterareas
-    clustercircularities
-    clustercontours
-end
+    pointdata::Union{Nothing, DataFrame}
+    clusterdata::Union{Nothing, DataFrame}
 
-ChannelResult(a, b, c, d, e, f, g) =
-        ChannelResult(a, b, c, d, e, f, g, nothing, nothing, nothing, nothing, nothing)
+    ChannelResult(a, b, c) = new(a, b, c, nothing, nothing)
+end

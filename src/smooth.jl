@@ -1,8 +1,7 @@
 
 # huge memory usage here, and taking a long time.
-function smooth!(cr, epsilon, smoothingradius)
+function smooth!(cr::Vector{ChannelResult}, epsilon, smoothingradius)
     for (i, cc) ∈ enumerate(cr)
-        cc.clusternpoints = [cluster.size for cluster ∈ cc.clusters]
         sigmas = smoothingradius
         cccoordinates = @view cc.coordinates[:, cc.abovethreshold]
         clustercoordinates = [@view cccoordinates[:, union(cluster.core_indices, cluster.boundary_indices)] for cluster ∈ cc.clusters]
@@ -22,9 +21,9 @@ function smooth!(cr, epsilon, smoothingradius)
         # create the grid
         boxes = [UnitRange.(floor.(bmin), ceil.(bmax)) for (bmin, bmax) ∈ zip(boxmins, boxmaxes)]
 
-        cc.clusterareas = Vector{Float64}(undef, length(boxes))
-        cc.clustercircularities = Vector{Float64}(undef, length(boxes))
-        cc.clustercontours = Vector{Any}(undef, length(boxes))
+        cc.clusterdata.area = Vector{Float64}(undef, length(boxes))
+        cc.clusterdata.circularity = Vector{Float64}(undef, length(boxes))
+        cc.clusterdata.contour = Vector{Any}(undef, length(boxes))
         for (ii, box) ∈ enumerate(boxes)
             # create histogram of the cluster with a resolution of 1 unit
             bincounts = zeros(Int, length.(box)...) # opportunity for sparse matrix? But current base implementation only 2d
@@ -84,9 +83,9 @@ function smooth!(cr, epsilon, smoothingradius)
             perimeter = sum(sqrt.(dx .^ 2 + dy .^ 2))
             circularity = 4 * π * contourarea / (perimeter ^ 2)
 
-            cc.clusterareas[ii] = contourarea
-            cc.clustercircularities[ii] = circularity
-            cc.clustercontours[ii] = points[maxline]
+            cc.clusterdata.area[ii] = contourarea
+            cc.clusterdata.circularity[ii] = circularity
+            cc.clusterdata.contour[ii] = points[maxline]
         end
     end
 end

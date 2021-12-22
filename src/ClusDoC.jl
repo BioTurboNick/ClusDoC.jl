@@ -2,6 +2,7 @@ module ClusDoC
 
 using Clustering
 using Contour
+using DataFrames
 using ImageFiltering
 using Interpolations
 using InvertedIndices
@@ -18,6 +19,7 @@ include("types/ChannelResult.jl") # remove src
 include("doc.jl")
 include("dbscan.jl")
 include("smooth.jl")
+include("output.jl")
 
 path = "test/realtest.bin.txt"
 outputpath = "output"
@@ -59,6 +61,7 @@ function clusdoc(channelnames, localizations, roiarea)
     cr = doc(channelnames, localizations, 20, 500, 10, roiarea)
     dbscan!(cr, 20, 3, true, 20)
     smooth!(cr, 20, 15)
+    
     return cr
 end
 
