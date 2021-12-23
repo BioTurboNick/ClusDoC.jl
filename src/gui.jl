@@ -1,10 +1,3 @@
-using Gtk.ShortNames, GtkObservables, NativeFileDialog, Printf, Plots, LocalizationMicroscopy, Images, ImageIO # find out which subpackages of Images I need
-using PolygonOps
-using ClusDoC
-using XLSX
-using Statistics
-using InvertedIndices
-
 # independent observables
 inputfiles = Observable([""])
 outputfolder = Observable("")
@@ -101,14 +94,7 @@ function drawplots(_)
         filename = basename(f)
         haskey(localizations[], filename) || continue
         locs = localizations[][filename]
-        plot()
-        for (i, chname) ∈ enumerate(sort(collect(keys(locs))))
-            chpoints = extractcoordinates(locs[chname])
-            Plots.scatter!(chpoints[1, :], chpoints[2, :], markercolor = colors[i], markeralpha = 0.5, markersize = 4, aspectratio = :equal, size=(2048, 2048), markerstrokewidth = 0)
-        end
-        Plots.plot!(ticks=:none, legend = :none, axis = false, widen = false, margin=-2(Plots.mm)) # change margin when Plots is updated
-        imagepath = joinpath(outputfolder[], filename * ".png")
-        Plots.savefig(imagepath)
+        generate_whole_localization_map(locs, outputfolder[], filename)
         # could probably generate plots, but delay saving until an output folder selected.
     end
     selectedimg[] = load_image(fileselector[])
@@ -193,8 +179,6 @@ function load_rois(obs)
     rois[] = roidict
 end
 
-resultsvar = nothing
-
 function run_clusdoc(obs)
     isempty(rois[]) && return
     for inputfile ∈ inputfiles[]
@@ -213,17 +197,15 @@ function run_clusdoc(obs)
             end
             cr = clusdoc(chnames, roilocalizations, abs(PolygonOps.area(roi) * 40960 * 40960))
             push!(results, cr)
-            global resultsvar = results
-            generate_localization_maps(cr, filename, i, chnames)
-            generate_doc_maps(cr, filename, i, chnames)
-            generate_cluster_maps(cr, filename, i, chnames)
-            generate_doc_histograms(cr, filename, i, chnames)
+            generate_localization_maps(cr, outputfolder[], filename, i, chnames)
+            generate_doc_maps(cr, outputfolder[], filename, i, chnames)
+            generate_cluster_maps(cr, outputfolder[], filename, i, chnames)
+            generate_doc_histograms(cr, outputfolder[], filename, i, chnames)
         end
         
         writeresultstables(results, joinpath(outputfolder[], "$(filename) ClusDoC Results.xlsx"))
         # should save: localization map with ROIs shown
         # need to save point data
-        # should probably switch to DataFrames
         # should restructure non-UI code into own files
         # should have rois automatically save and load (if possible)
         # consider padding that rois can be drawn in

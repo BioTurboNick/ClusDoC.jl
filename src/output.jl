@@ -1,25 +1,36 @@
-function generate_localization_maps(cr::Vector{ClusDoC.ChannelResult}, filename, i, chnames)
+function generate_whole_localization_map(locs::Dict{String, Vector{Localization}}, outputpath, filename)
+    plot()
+    for (i, chname) ∈ enumerate(sort(collect(keys(locs))))
+        chpoints = extractcoordinates(locs[chname])
+        Plots.scatter!(chpoints[1, :], chpoints[2, :], markercolor = colors[i], markeralpha = 0.5, markersize = 4, aspectratio = :equal, size=(2048, 2048), markerstrokewidth = 0)
+    end
+    Plots.plot!(ticks=:none, legend = :none, axis = false, widen = false, margin=-2(Plots.mm)) # change margin when Plots is updated
+    imagepath = joinpath(outputpath, filename * ".png")
+    Plots.savefig(imagepath)
+end
+
+function generate_localization_maps(cr::Vector{ChannelResult}, outputpath, filename, i, chnames)
     xmin, xmax = minimum(minimum(c.coordinates[1,:] for c ∈ cr)), maximum(maximum(c.coordinates[1,:] for c ∈ cr))
     ymin, ymax = minimum(minimum(c.coordinates[2,:] for c ∈ cr)), maximum(maximum(c.coordinates[2,:] for c ∈ cr))
     for j ∈ eachindex(cr)
         scatter(cr[j].coordinates[1, :], cr[j].coordinates[2, :], markercolor = colors[j], markersize = 4, alpha = 0.5, markerstrokewidth = 0)
         plot!(size=(2048,2048), legend = :none, aspectratio = :equal, axis = false, ticks = false, xlims = (xmin, xmax), ylims = (ymin, ymax))
-        path = joinpath(outputfolder[], "localization maps")
+        path = joinpath(outputpath, "localization maps")
         mkpath(path)
         imagepath = joinpath(path, filename * " region $i " * chnames[j] * ".png")
         savefig(imagepath)
     end
 end
 
-function generate_doc_maps(cr::Vector{ClusDoC.ChannelResult}, filename, i, chnames)
+function generate_doc_maps(cr::Vector{ChannelResult}, outputpath, filename, i, chnames)
     xmin, xmax = minimum(minimum(c.coordinates[1,:] for c ∈ cr)), maximum(maximum(c.coordinates[1,:] for c ∈ cr))
     ymin, ymax = minimum(minimum(c.coordinates[2,:] for c ∈ cr)), maximum(maximum(c.coordinates[2,:] for c ∈ cr))
     for j ∈ eachindex(cr)
         for k ∈ eachindex(cr)
             k != j || continue
-            scatter(cr[j].coordinates[1, cr[j].abovethreshold], cr[j].coordinates[2, cr[j].abovethreshold], markerz = cr[j].pointdata.docscore[k], markersize = 4, alpha = 0.5, markerstrokewidth = 0)
+            scatter(cr[j].coordinates[1, cr[j].abovethreshold], cr[j].coordinates[2, cr[j].abovethreshold], markerz = cr[j].pointdata[!, Symbol(:docscore, k)], markersize = 4, alpha = 0.5, markerstrokewidth = 0)
             plot!(size=(2048,2048), legend = :none, aspectratio = :equal, axis = false, ticks = false, xlims = (xmin, xmax), ylims = (ymin, ymax))
-            path = joinpath(outputfolder[], "doc maps")
+            path = joinpath(outputpath, "doc maps")
             mkpath(path)
             imagepath = joinpath(path, filename * " region $i " * chnames[j] * " to " * chnames[k] * ".png")
             savefig(imagepath)
@@ -27,28 +38,28 @@ function generate_doc_maps(cr::Vector{ClusDoC.ChannelResult}, filename, i, chnam
     end
 end
 
-function generate_cluster_maps(cr::Vector{ClusDoC.ChannelResult}, filename, i, chnames)
+function generate_cluster_maps(cr::Vector{ChannelResult}, outputpath, filename, i, chnames)
     xmin, xmax = minimum(minimum(c.coordinates[1,:] for c ∈ cr)), maximum(maximum(c.coordinates[1,:] for c ∈ cr))
     ymin, ymax = minimum(minimum(c.coordinates[2,:] for c ∈ cr)), maximum(maximum(c.coordinates[2,:] for c ∈ cr))
     for j ∈ eachindex(cr)
         scatter(cr[j].coordinates[1, :], cr[j].coordinates[2, :], color = :gray, markersize = 4, alpha = 0.1)
         plot!(size=(2048,2048), legend = :none, aspectratio = :equal, axis = false, ticks = false, xlims = (xmin, xmax), ylims = (ymin, ymax))
         [plot!(ai, lw = 5, linecolor = colors[j]) for ai in cr[j].clustercontours]
-        path = joinpath(outputfolder[], "cluster maps")
+        path = joinpath(outputpath, "cluster maps")
         mkpath(path)
         imagepath = joinpath(path, filename * " region $i " * chnames[j] * ".png")
         savefig(imagepath)
     end
 end
 
-function generate_doc_histograms(cr::Vector{ClusDoC.ChannelResult}, filename, i, chnames)
+function generate_doc_histograms(cr::Vector{ChannelResult}, outputpath, filename, i, chnames)
     # what to do about huge spike at -1?
     for j ∈ eachindex(cr)
         for k ∈ eachindex(cr)
             j != k || continue
-            histogram(cr[j].docscores[k], fillcolor = colors[j], bins = 100, size = (1024, 256), legend = :none,
+            histogram(cr[j].pointdata[!, Symbol(:docscore, k)], fillcolor = colors[j], bins = 100, size = (1024, 256), legend = :none,
                 xlabel = "Degree of Colocalization", ylabel = "Frequency", margin = 6Plots.mm, widen = false)
-            path = joinpath(outputfolder[], "doc histograms")
+            path = joinpath(outputpath, "doc histograms")
             mkpath(path)
             imagepath = joinpath(path, filename * " region $i " * chnames[j] * ".png")
             savefig(imagepath)
@@ -56,8 +67,10 @@ function generate_doc_histograms(cr::Vector{ClusDoC.ChannelResult}, filename, i,
     end
 end
 
+# XLSX creates a fixable error in the output with NaN values
+replacenan(data) = isnan(data) ? "" : data
 
-function writeresultstables(roiresults::Vector{Vector{ClusDoC.ChannelResult}}, path)
+function writeresultstables(roiresults::Vector{Vector{ChannelResult}}, path)
     XLSX.openxlsx(path, mode = "w") do xf
         sheet = xf[1]
         XLSX.rename!(sheet, "DoC Results")
@@ -67,7 +80,7 @@ function writeresultstables(roiresults::Vector{Vector{ClusDoC.ChannelResult}}, p
             for (i, cr) ∈ enumerate(roiresults[k])
                 for j ∈ eachindex(roiresults[k])
                     i == j && continue
-                    sheet[2 + k, 1 + (j - 1) * i] = count(cr.pointdata.docscore[j] .> 0.4) / length(cr.pointdata.docscore[j])
+                    sheet[2 + k, 1 + (j - 1) * i] = cr.fraction_colocalized[j]
                 end
             end
         end
@@ -91,8 +104,6 @@ function writeresultstables(roiresults::Vector{Vector{ClusDoC.ChannelResult}}, p
                     sheet = xf[i + 1]
                 end
 
-                minclusterpoints = 10 # clusters with fewer points than this are ignored, and clusers must have at least this many colocalized points to be considered colocalized
-                all_colocalized_indexes = []
                 k = 1
                 for (j, channel2) ∈ enumerate(roichannels)
                     i == j && continue
@@ -106,35 +117,20 @@ function writeresultstables(roiresults::Vector{Vector{ClusDoC.ChannelResult}}, p
                         sheet[3, offset + 4] = "Relative density / granularity"
                     end
 
-                    #clusterpoints = union(c.core_indices, c.po)
-                    colocalized_indexes = findall([count(channel.pointdata.docscore[j][c.core_indices] .> 0.4) ≥ minclusterpoints for c ∈ channel.clusterdata.cluster])
-                    union!(all_colocalized_indexes, colocalized_indexes)
-                    sheet[3 + r, offset] = length(colocalized_indexes)
-                    length(colocalized_indexes) > 0 || continue
-
-                    meansize = mean(channel.clusterdata.size[colocalized_indexes])
-                    sheet[3 + r, offset + 1] = isnan(meansize) ? "" : meansize # XLSX creates a fixable error in the output with NaN values
-                    meanarea = mean(channel.clusterdata.area[colocalized_indexes])
-                    sheet[3 + r, offset + 2] = isnan(meanarea) ? "" : meanarea
-                    meancircularity = mean(channel.clusterdata.circularity[colocalized_indexes])
-                    sheet[3 + r, offset + 3] = isnan(meancircularity) ? "" : meancircularity
-                    meandensity = mean([mean(channel.pointdata.density[c.core_indices]) / channel.roidensity for (i, c) ∈ enumerate(channel.clusterdata.cluster[colocalized_indexes])])
-                    sheet[3 + r, offset + 4] = isnan(meandensity) ? "" : meandensity
-
+                    sheet[3 + r, offset + 1] = channel.ncoclusters[j]
+                    sheet[3 + r, offset + 2] = replacenan(channel.meancoclustersize[j])
+                    sheet[3 + r, offset + 3] = replacenan(channel.meancoclusterarea[j])
+                    sheet[3 + r, offset + 4] = replacenan(channel.meancoclustercircularity[j])
+                    sheet[3 + r, offset + 5] = replacenan(channel.meancoclusterdensity[j])
+                    
                     k += 1
                 end
 
-                noncolocalized_indexes = setdiff!(findall([length(c.core_indices) ≥ minclusterpoints for c ∈ channel.clusterdata.cluster]), all_colocalized_indexes)
-                sheet[3 + r, 1] = length(noncolocalized_indexes)
-                length(all_colocalized_indexes) < length(channel.clusters) || continue
-                meansize = mean(chanel.clusterdata.size[noncolocalized_indexes])
-                sheet[3 + r, 2] = isnan(meansize) ? "" : meansize # XLSX creates a fixable error in the output with NaN values
-                meanarea = mean(channel.clusterdata.area[noncolocalized_indexes])
-                sheet[3 + r, 3] = isnan(meanarea) ? "" : meanarea
-                meancircularity = mean(channel.clusterdata.circularity[noncolocalized_indexes])
-                sheet[3 + r, 4] = isnan(meancircularity) ? "" : meancircularity
-                meandensity = mean([mean(channel.pointdata.density[c.core_indices]) / channel.roidensity for (i, c) ∈ enumerate(channel.clusterdata.cluster[noncolocalized_indexes])])
-                sheet[3 + r, 5] = isnan(meandensity) ? "" : meandensity
+                sheet[3 + r, 1] = channel.ncoclusters[i]
+                sheet[3 + r, 2] = replacenan(channel.meancoclustersize[i])
+                sheet[3 + r, 3] = replacenan(channel.meancoclusterarea[i])
+                sheet[3 + r, 4] = replacenan(channel.meancoclustercircularity[i])
+                sheet[3 + r, 5] = replacenan(channel.meancoclusterdensity[i])
 
                 ###  In the original, the average density was determined by the rectangular range between min and max point coordinates for the area
                 ### A benefit of that is that if your ROI overshoots, you will end up with the same area regardless. But it also means that non-square ROIs

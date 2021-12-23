@@ -18,12 +18,14 @@ within `radiusmax` of each point with steps of size `radiusstep`. `localradius` 
 neighbors than expected by chance. Results are added to the `Channel` objects. 
 """
 function doc(channelnames, localizations, localradius, radiusmax, radiusstep, roiarea)
+    length(channelnames) == length(localizations) ||
+        throw(ArgumentError("$(:channelnames) must be the same length as $(:localizations)"))
     0 < localradius < radiusmax ||
         throw(ArgumentError("$(:localradius) must be positive and less than $(:radiusmax); got $localradius, $radiusmax"))
     0 < radiusstep < radiusmax ||
         throw(ArgumentError("$(:radiusstep) must be positive and less than $(:radiusmax); got $radiuistep, $radiusmax"))
 
-    channels = ChannelResult.(channelnames, extractcoordinates.(localizations), length.(localizations) ./ roiarea)
+    channels = ChannelResult.(channelnames, extractcoordinates.(localizations), length.(localizations) ./ roiarea, length(channelnames))
     #=
     The algorithm for coordinate-based colocalization (doi: 10.1007/s00418-011-0880-5) is:
     1. For each localization, count the number of localizations (other than itself) within a given radius for each channel.
@@ -55,7 +57,7 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
         distributions = Vector(undef, length(channels))
         for j ∈ eachindex(channels)
             k = Int(i == j) # factor to remove self
-            dr = [(NearestNeighbors.inrangecount(ctrees[j], (@view c.coordinates[:, c.abovethreshold]), r) .- k) ./ r ^ 2 for r ∈ radiussteps]
+            dr = [(NearestNeighbors.inrangecount(ctrees[j], (@view c.coordinates[:, abovethreshold]), r) .- k) ./ r ^ 2 for r ∈ radiussteps]
             distributions[j] = hcat((drx ./ dr[end] for drx ∈ dr)...)
         end
 
@@ -63,13 +65,13 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
         # original sets any NaNs to 0. I'm setting them to -1 because "nothing anywhere nearby" is as anticorrelated as it can get.
         docscores = Vector(undef, length(channels))
         for j ∈ eachindex(channels)
-            spearmancoefficient = [corspearman(distributions[i][k, :], distributions[j][k, :]) for k ∈ 1:count(c.abovethreshold)]
-            _, nearestdistance = nn(ctrees[j], c.coordinates[:, c.abovethreshold])
+            spearmancoefficient = [corspearman(distributions[i][k, :], distributions[j][k, :]) for k ∈ 1:count(abovethreshold)]
+            _, nearestdistance = nn(ctrees[j], c.coordinates[:, abovethreshold])
             docscores[j] = spearmancoefficient .* exp.(-nearestdistance ./ radiussteps[end])
-            docscores[j][isnan.(c.docscores[j])] .= -1
+            docscores[j][isnan.(docscores[j])] .= -1
         end
 
-        channels[i].pointdata = DataFrame(:abovethreshold => abovethreshold, :density => densities, :docscore => docscores)
+        channels[i].pointdata = DataFrame(:abovethreshold => abovethreshold, :density => densities, [Symbol(:docscore, j) => docscores for j ∈ eachindex(channels)]...)
     end
 
     return channels
