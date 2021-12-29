@@ -3,8 +3,8 @@
 function smooth!(cr::Vector{ChannelResult}, epsilon, smoothingradius)
     for (i, cc) ∈ enumerate(cr)
         sigmas = smoothingradius
-        cccoordinates = @view cc.coordinates[:, cc.abovethreshold]
-        clustercoordinates = [@view cccoordinates[:, union(cluster.core_indices, cluster.boundary_indices)] for cluster ∈ cc.clusters]
+        cccoordinates = @view cc.coordinates[:, cc.pointdata.abovethreshold]
+        clustercoordinates = [@view cccoordinates[:, union(cluster.core_indices, cluster.boundary_indices)] for cluster ∈ cc.clusterdata.cluster]
         is2d = any((@view clustercoordinates[3, :]) .!= 0)
         if is2d
             clustercoordinates = [@view cluster[1:2, :] for cluster ∈ clustercoordinates]

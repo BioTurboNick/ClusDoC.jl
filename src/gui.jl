@@ -183,6 +183,7 @@ function run_clusdoc(obs)
     isempty(rois[]) && return
     for inputfile ∈ inputfiles[]
         filename = basename(inputfile)
+        haskey(rois[], filename) && !isempty(rois[][filename]) || continue
         locs = localizations[][filename]
         chnames = sort(unique(keys(locs)))
 
@@ -209,6 +210,7 @@ function run_clusdoc(obs)
         # should restructure non-UI code into own files
         # should have rois automatically save and load (if possible)
         # consider padding that rois can be drawn in
+        # why does GUI show up *under* VSCode?
     end
 end
 

@@ -23,7 +23,7 @@ include("dbscan.jl")
 include("smooth.jl")
 include("output.jl")
 
-clusdoc() = include("src/gui.jl")
+clusdoc() = (include("src/gui.jl"); nothing)
 
 function clusdoc(channelnames, localizations, roiarea)
     cr = doc(channelnames, localizations, 20, 500, 10, roiarea)
@@ -56,8 +56,8 @@ function calculate_colocalized_cluster_data!(cr::Vector{ChannelResult})
 
         noncolocalized_indexes = setdiff!(findall([length(c.core_indices) ≥ minclusterpoints for c ∈ channel.clusterdata.cluster]), all_colocalized_indexes)
         channel.ncoclusters[i] = length(noncolocalized_indexes)
-        length(all_colocalized_indexes) < length(channel.clusters) || continue
-        channel.meancoclustersize[i] = mean(chanel.clusterdata.size[noncolocalized_indexes])
+        length(all_colocalized_indexes) < length(channel.clusterdata.cluster) || continue
+        channel.meancoclustersize[i] = mean(channel.clusterdata.size[noncolocalized_indexes])
         channel.meancoclusterarea[i] = mean(channel.clusterdata.area[noncolocalized_indexes])
         channel.meancoclustercircularity[i] = mean(channel.clusterdata.circularity[noncolocalized_indexes])
         channel.meancoclusterdensity[i] = mean([mean(channel.pointdata.density[c.core_indices]) / channel.roidensity for (i, c) ∈ enumerate(channel.clusterdata.cluster[noncolocalized_indexes])])

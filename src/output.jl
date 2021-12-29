@@ -28,7 +28,7 @@ function generate_doc_maps(cr::Vector{ChannelResult}, outputpath, filename, i, c
     for j ∈ eachindex(cr)
         for k ∈ eachindex(cr)
             k != j || continue
-            scatter(cr[j].coordinates[1, cr[j].abovethreshold], cr[j].coordinates[2, cr[j].abovethreshold], markerz = cr[j].pointdata[!, Symbol(:docscore, k)], markersize = 4, alpha = 0.5, markerstrokewidth = 0)
+            scatter(cr[j].coordinates[1, cr[j].pointdata.abovethreshold], cr[j].coordinates[2, cr[j].pointdata.abovethreshold], markerz = cr[j].pointdata[!, Symbol(:docscore, k)], markersize = 4, alpha = 0.5, markerstrokewidth = 0)
             plot!(size=(2048,2048), legend = :none, aspectratio = :equal, axis = false, ticks = false, xlims = (xmin, xmax), ylims = (ymin, ymax))
             path = joinpath(outputpath, "doc maps")
             mkpath(path)
@@ -44,7 +44,7 @@ function generate_cluster_maps(cr::Vector{ChannelResult}, outputpath, filename, 
     for j ∈ eachindex(cr)
         scatter(cr[j].coordinates[1, :], cr[j].coordinates[2, :], color = :gray, markersize = 4, alpha = 0.1)
         plot!(size=(2048,2048), legend = :none, aspectratio = :equal, axis = false, ticks = false, xlims = (xmin, xmax), ylims = (ymin, ymax))
-        [plot!(ai, lw = 5, linecolor = colors[j]) for ai in cr[j].clustercontours]
+        [plot!(ai, lw = 5, linecolor = colors[j]) for ai in cr[j].clusterdata.contour]
         path = joinpath(outputpath, "cluster maps")
         mkpath(path)
         imagepath = joinpath(path, filename * " region $i " * chnames[j] * ".png")
@@ -117,11 +117,11 @@ function writeresultstables(roiresults::Vector{Vector{ChannelResult}}, path)
                         sheet[3, offset + 4] = "Relative density / granularity"
                     end
 
-                    sheet[3 + r, offset + 1] = channel.ncoclusters[j]
-                    sheet[3 + r, offset + 2] = replacenan(channel.meancoclustersize[j])
-                    sheet[3 + r, offset + 3] = replacenan(channel.meancoclusterarea[j])
-                    sheet[3 + r, offset + 4] = replacenan(channel.meancoclustercircularity[j])
-                    sheet[3 + r, offset + 5] = replacenan(channel.meancoclusterdensity[j])
+                    sheet[3 + r, offset] = channel.ncoclusters[j]
+                    sheet[3 + r, offset + 1] = replacenan(channel.meancoclustersize[j])
+                    sheet[3 + r, offset + 2] = replacenan(channel.meancoclusterarea[j])
+                    sheet[3 + r, offset + 3] = replacenan(channel.meancoclustercircularity[j])
+                    sheet[3 + r, offset + 4] = replacenan(channel.meancoclusterdensity[j])
                     
                     k += 1
                 end

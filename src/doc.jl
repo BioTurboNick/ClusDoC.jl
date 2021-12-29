@@ -65,13 +65,15 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
         # original sets any NaNs to 0. I'm setting them to -1 because "nothing anywhere nearby" is as anticorrelated as it can get.
         docscores = Vector(undef, length(channels))
         for j ∈ eachindex(channels)
+            docscore = fill(NaN, length(abovethreshold))
             spearmancoefficient = [corspearman(distributions[i][k, :], distributions[j][k, :]) for k ∈ 1:count(abovethreshold)]
             _, nearestdistance = nn(ctrees[j], c.coordinates[:, abovethreshold])
-            docscores[j] = spearmancoefficient .* exp.(-nearestdistance ./ radiussteps[end])
-            docscores[j][isnan.(docscores[j])] .= -1
+            docscore[abovethreshold] = spearmancoefficient .* exp.(-nearestdistance ./ radiussteps[end])
+            docscore[abovethreshold][isnan.(docscore[abovethreshold])] .= -1
+            docscores[j] = docscore
         end
 
-        channels[i].pointdata = DataFrame(:abovethreshold => abovethreshold, :density => densities, [Symbol(:docscore, j) => docscores for j ∈ eachindex(channels)]...)
+        channels[i].pointdata = DataFrame(:abovethreshold => abovethreshold, :density => densities, [Symbol(:docscore, j) => docscores[j] for j ∈ eachindex(channels)]...)
     end
 
     return channels
