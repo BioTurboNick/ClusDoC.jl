@@ -282,7 +282,7 @@
                   </object>
                   <packing>
                     <property name="expand">False</property>
-                    <property name="fill">True</property>
+                    <property name="fill">False</property>
                     <property name="padding">2</property>
                     <property name="position">1</property>
                   </packing>
@@ -296,6 +296,7 @@
                       <object class="GtkLabel">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="margin_right">5</property>
                         <property name="label" translatable="yes">Status</property>
                       </object>
                       <packing>
@@ -308,6 +309,7 @@
                       <object class="GtkProgressBar" id="statusprogress">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="valign">center</property>
                       </object>
                       <packing>
                         <property name="expand">True</property>

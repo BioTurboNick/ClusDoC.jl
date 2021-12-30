@@ -11,11 +11,11 @@ using NearestNeighbors
 using PolygonOps
 using StatsBase
 using XLSX
-using Gtk.ShortNames, GtkObservables, NativeFileDialog, Plots, LocalizationMicroscopy, Images, ImageIO # find out which subpackages of Images I need
-using XLSX
+using Gtk.ShortNames, GtkObservables, NativeFileDialog, Plots, LocalizationMicroscopy, ImageCore, ImageIO # find out which subpackages of Images I need
+using JLD2
 using Statistics
 
-export clusdoc
+export clusdoc, load_raw_results
 
 include("types/ChannelResult.jl")
 include("doc.jl")
@@ -64,5 +64,7 @@ function calculate_colocalized_cluster_data!(cr::Vector{ChannelResult})
     end
     return cr
 end
+
+load_raw_results(path) = load(path)["results"]
 
 end # module
