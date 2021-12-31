@@ -179,48 +179,13 @@ function load_rois(obs)
     rois[] = roidict
 end
 
-function run_clusdoc(obs)
-    isempty(rois[]) && return
-    #Threads.@spawn begin
-        #@idle_add Gtk.start(b["runspinner"]) # can't get spinner to appear at all, may be an SVG rendering or resource file issue
-        roicount = sum(length(get(rois[], basename(filename), [])) for filename ∈ inputfiles[])
-        progress = progressbar(0:roicount; widget = b["statusprogress"])
-        for inputfile ∈ inputfiles[]
-            filename = basename(inputfile)
-            haskey(rois[], filename) && !isempty(rois[][filename]) || continue
-            locs = localizations[][filename]
-            chnames = sort(unique(keys(locs)))
-
-            results = Vector{ClusDoC.ChannelResult}[]
-            for (i, roi) ∈ enumerate(rois[][filename])
-                roi = [(x, 1 - y) for (x, y) ∈ roi] # invert y to match localization coordinates - but actually I might need to invert the original image instead
-                roilocalizations = Vector{Vector{Localization}}()
-                for chname ∈ chnames
-                    coords = extractcoordinates(locs[chname])
-                    roichlocalizationsmask = inpolygon.(eachcol(coords ./ 40960), Ref(roi)) .!= 0
-                    push!(roilocalizations, locs[chname][roichlocalizationsmask])
-                end
-                cr = clusdoc(chnames, roilocalizations, abs(PolygonOps.area(roi) * 40960 * 40960))
-                push!(results, cr)
-                generate_localization_maps(cr, outputfolder[], filename, i, chnames)
-                generate_doc_maps(cr, outputfolder[], filename, i, chnames)
-                generate_cluster_maps(cr, outputfolder[], filename, i, chnames)
-                generate_doc_histograms(cr, outputfolder[], filename, i, chnames)
-                @idle_add begin
-                    progress[] += 1 # won't update live unless user enables more than one thread
-                end
-            end
-            
-            writeresultstables(results, joinpath(outputfolder[], "$(filename) ClusDoC Results.xlsx"))
-            save(joinpath(outputfolder[], "$(filename) raw data.jld2"), "results", results)
-            # should save: localization map with ROIs shown
-            # should restructure non-UI code into own files
-            # should have rois automatically save and load (if possible)
-            # consider padding that rois can be drawn in
-        end
-
-        #Gtk.stop(b["runspinner"])
-    #end
+function run_clusdoc(_)
+    roicount = sum((n = length(get(rois[], basename(filename), [])); n == 0 ? 1 : n) for filename ∈ inputfiles[])
+    progress = progressbar(0:roicount; widget = b["statusprogress"]) # won't update live unless user enables more than one thread
+    #@idle_add Gtk.start(b["runspinner"]) # can't get spinner to appear at all, may be an SVG rendering or resource file issue 
+    #Threads.@spawn
+    clusdoc(inputfiles[], rois[], localizations[], outputfolder[], () -> @idle_add progress[] += 1)
+    #Gtk.stop(b["runspinner"])
 end
 
 

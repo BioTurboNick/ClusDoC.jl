@@ -23,6 +23,17 @@ include("dbscan.jl")
 include("smooth.jl")
 include("output.jl")
 
+"""
+    clusdoc()
+
+Open the ClusDoC GUI
+
+    clusdoc(channelnames, localizations, roiarea)
+
+Run ClusDoC on a single set of localizations.
+
+    clusdoc(inputfiles, rois, localizations, outputfolder, update_callback)
+"""
 clusdoc() = (include("src/gui.jl"); nothing)
 
 function clusdoc(channelnames, localizations, roiarea)
@@ -31,6 +42,52 @@ function clusdoc(channelnames, localizations, roiarea)
     smooth!(cr, 20, 15)
     calculate_colocalized_cluster_data!(cr)
     return cr
+end
+
+function clusdoc(inputfiles, rois, localizations, outputfolder, update_callback = () -> nothing)
+    isempty(rois) && return
+    println("Starting ClusDoC")
+
+    for inputfile ∈ inputfiles
+        println("Working on $inputfile")
+        filename = basename(inputfile)
+        locs = localizations[filename]
+        chnames = sort(unique(keys(locs)))
+
+        results = Vector{ClusDoC.ChannelResult}[]
+        
+        if haskey(rois, filename) && !isempty(rois[filename])
+            filerois = copy(rois[filename])
+        else
+            filerois = [[(-Inf, -Inf), (-Inf, Inf), (Inf, Inf), (Inf, -Inf), (-Inf, -Inf)]] # default whole-image ROI - Except this makes infinite area, need to change
+        end
+
+        for (i, roi) ∈ enumerate(filerois)
+            println("    ROI $i")
+            roi = [(x, 1 - y) for (x, y) ∈ roi] # invert y to match localization coordinates - but actually I might need to invert the original image instead
+            roilocalizations = Vector{Vector{Localization}}()
+            for chname ∈ chnames
+                coords = extractcoordinates(locs[chname])
+                roichlocalizationsmask = inpolygon.(eachcol(coords ./ 40960), Ref(roi)) .!= 0
+                push!(roilocalizations, locs[chname][roichlocalizationsmask])
+            end
+            cr = clusdoc(chnames, roilocalizations, abs(PolygonOps.area(roi) * 40960 * 40960))
+            push!(results, cr)
+            generate_localization_maps(cr, outputfolder, filename, i, chnames)
+            generate_doc_maps(cr, outputfolder, filename, i, chnames)
+            generate_cluster_maps(cr, outputfolder, filename, i, chnames)
+            generate_doc_histograms(cr, outputfolder, filename, i, chnames)
+            update_callback()
+        end
+
+        writeresultstables(results, joinpath(outputfolder, "$(filename) ClusDoC Results.xlsx"))
+        save(joinpath(outputfolder, "$(filename) raw data.jld2"), "results", results)
+        # should save: localization map with ROIs shown
+        # should have rois automatically save and load (if possible)
+        # consider padding that rois can be drawn in
+        # add timer
+    end
+    println("Done")
 end
 
 const colocalized_threshold = 0.4
