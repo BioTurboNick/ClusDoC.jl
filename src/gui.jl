@@ -180,6 +180,7 @@ function load_rois(obs)
 end
 
 function run_clusdoc(_)
+    println("huh?")
     roicount = sum((n = length(get(rois[], basename(filename), [])); n == 0 ? 1 : n) for filename ∈ inputfiles[])
     progress = progressbar(0:roicount; widget = b["statusprogress"]) # won't update live unless user enables more than one thread
     #@idle_add Gtk.start(b["runspinner"]) # can't get spinner to appear at all, may be an SVG rendering or resource file issue 
