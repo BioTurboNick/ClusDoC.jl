@@ -36,6 +36,8 @@ Run ClusDoC on a single set of localizations.
 """
 clusdoc() = (include("src/gui.jl"); nothing)
 
+# profiling - 2300 frame in nearest neighbors `inrange`, 3000 frames in `imfilter`, 200 spent in `rankcorr` (out of 6000)
+# should check out rankcorr, it's the one I haven't tried to optimize at all
 function clusdoc(channelnames, localizations, roiarea)
     cr = doc(channelnames, localizations, 20, 500, 10, roiarea)
     dbscan!(cr, 20, 3, true, 20)
