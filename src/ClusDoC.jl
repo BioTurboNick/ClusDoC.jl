@@ -52,6 +52,8 @@ function clusdoc(inputfiles, rois, localizations, outputfolder, update_callback 
     isempty(rois) && return
     println("Starting ClusDoC")
 
+    starttime = time_ns()
+
     for inputfile ∈ inputfiles
         println("Working on $inputfile")
         filename = basename(inputfile)
@@ -63,24 +65,20 @@ function clusdoc(inputfiles, rois, localizations, outputfolder, update_callback 
         if haskey(rois, filename) && !isempty(rois[filename])
             filerois = copy(rois[filename])
         else
-            coords = reduce(hcat, [extractcoordinates(locs[chname]) for chname ∈ chnames])
-            xmin, xmax = extrema(coords[1, :])
-            ymin, ymax = extrema(coords[2, :])
-            filerois = [[(xmin, ymin), (xmin, ymax), (xmax, ymax), (xmax, ymin), (xmin, ymin)]]
+            filerois = [create_whole_image_roi(locs, chnames)]
         end
 
         for (i, roi) ∈ enumerate(filerois)
             println("    ROI $i")
+            roi_starttime = time_ns()
             roi = [(x, 1 - y) for (x, y) ∈ roi] # invert y to match localization coordinates - but actually I might need to invert the original image instead
-            roilocalizations = Vector{Vector{Localization}}()
-            for chname ∈ chnames
-                coords = extractcoordinates(locs[chname])
-                roichlocalizationsmask = inpolygon.(eachcol(coords ./ 40960), Ref(roi)) .!= 0
-                push!(roilocalizations, locs[chname][roichlocalizationsmask])
-            end
+            roilocalizations = get_roi_localizations(locs, chnames, roi)
             cr = clusdoc(chnames, roilocalizations, abs(PolygonOps.area(roi) * 40960 * 40960))
             push!(results, cr)
             generate_roi_output(cr, outputfolder, filename, i, chnames)
+            roi_endtime = time_ns()
+            roi_elapsed_s = (roi_endtime - roi_starttime) / 1_000_000_000
+            println("         finished in $roi_elapsed_s s")
             update_callback()
         end
 
@@ -89,9 +87,29 @@ function clusdoc(inputfiles, rois, localizations, outputfolder, update_callback 
         # should save: localization map with ROIs shown
         # should have rois automatically save and load (if possible)
         # consider padding that rois can be drawn in
-        # add timer
     end
-    println("Done")
+
+    endtime = time_ns()
+    elapsed_s = (endtime - starttime) / 1_000_000_000
+
+    println("Done in $elapsed_s s")
+end
+
+function create_whole_image_roi(locs, chnames)
+    coords = reduce(hcat, [extractcoordinates(locs[chname]) for chname ∈ chnames])
+    xmin, xmax = extrema(coords[1, :]) ./ 40960
+    ymin, ymax = extrema(coords[2, :]) ./ 40960
+    return [(xmin, ymin), (xmin, ymax), (xmax, ymax), (xmax, ymin), (xmin, ymin)]
+end
+
+function get_roi_localizations(locs, chnames, roi)
+    roilocalizations = Vector{Vector{Localization}}()
+    for chname ∈ chnames
+        coords = extractcoordinates(locs[chname])
+        roichlocalizationsmask = inpolygon.(eachcol(coords ./ 40960), Ref(roi)) .!= 0
+        push!(roilocalizations, locs[chname][roichlocalizationsmask])
+    end
+    return roilocalizations
 end
 
 function generate_roi_output(cr, outputfolder, filename, i, chnames)
