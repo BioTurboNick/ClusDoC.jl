@@ -37,7 +37,7 @@ Run ClusDoC on a single set of localizations.
 clusdoc() = (include("src/gui.jl"); nothing)
 
 # profiling - 2300 frame in nearest neighbors `inrange`, 3000 frames in `imfilter`, 200 spent in `rankcorr` (out of 6000)
-# should check out rankcorr, it's the one I haven't tried to optimize at all
+# should check out rankcorr, it's the one I haven't tried to optimize at all - checked and it's about minimal
 function clusdoc(channelnames, localizations, roiarea)
     cr = doc(channelnames, localizations, 20, 500, 10, roiarea)
     dbscan!(cr, 20, 3, true, 20)
@@ -45,6 +45,8 @@ function clusdoc(channelnames, localizations, roiarea)
     calculate_colocalized_cluster_data!(cr)
     return cr
 end
+
+# for some reason localizations is empty when getting to doc()
 
 function clusdoc(inputfiles, rois, localizations, outputfolder, update_callback = () -> nothing)
     isempty(rois) && return
@@ -61,7 +63,10 @@ function clusdoc(inputfiles, rois, localizations, outputfolder, update_callback 
         if haskey(rois, filename) && !isempty(rois[filename])
             filerois = copy(rois[filename])
         else
-            filerois = [[(-Inf, -Inf), (-Inf, Inf), (Inf, Inf), (Inf, -Inf), (-Inf, -Inf)]] # default whole-image ROI - Except this makes infinite area, need to change
+            coords = reduce(hcat, [extractcoordinates(locs[chname]) for chname ∈ chnames])
+            xmin, xmax = extrema(coords[1, :])
+            ymin, ymax = extrema(coords[2, :])
+            filerois = [[(xmin, ymin), (xmin, ymax), (xmax, ymax), (xmax, ymin), (xmin, ymin)]]
         end
 
         for (i, roi) ∈ enumerate(filerois)
