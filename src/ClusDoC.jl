@@ -80,10 +80,7 @@ function clusdoc(inputfiles, rois, localizations, outputfolder, update_callback 
             end
             cr = clusdoc(chnames, roilocalizations, abs(PolygonOps.area(roi) * 40960 * 40960))
             push!(results, cr)
-            generate_localization_maps(cr, outputfolder, filename, i, chnames)
-            generate_doc_maps(cr, outputfolder, filename, i, chnames)
-            generate_cluster_maps(cr, outputfolder, filename, i, chnames)
-            generate_doc_histograms(cr, outputfolder, filename, i, chnames)
+            generate_roi_output(cr, outputfolder, filename, i, chnames)
             update_callback()
         end
 
@@ -95,6 +92,13 @@ function clusdoc(inputfiles, rois, localizations, outputfolder, update_callback 
         # add timer
     end
     println("Done")
+end
+
+function generate_roi_output(cr, outputfolder, filename, i, chnames)
+    generate_localization_maps(cr, outputfolder, filename, i, chnames)
+    generate_doc_maps(cr, outputfolder, filename, i, chnames)
+    generate_cluster_maps(cr, outputfolder, filename, i, chnames)
+    generate_doc_histograms(cr, outputfolder, filename, i, chnames)
 end
 
 const colocalized_threshold = 0.4
