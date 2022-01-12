@@ -110,15 +110,15 @@ function writeresultstables_clustering(xf, r, i, channel)
         XLSX.addsheet!(xf)
         sheet = xf[i + 1]
         XLSX.rename!(sheet, "Clustering Results $(channel.channelname)")
-        sheet["A1"] = "ROI area (um^2)"
+        sheet["A1"] = "ROI area (μm^2)"
         sheet["B1"] = "Number of clusters"
-        sheet["C1"] = "Density of clusters (clusters / um^2)"
+        sheet["C1"] = "Density of clusters (clusters / μm^2)"
         sheet["D1"] = "Cluster area (nm^2)"
         sheet["E1"] = "Cluster circularity"
         sheet["F1"] = "Number of localizations in ROI"
         sheet["G1"] = "Fraction of localizations in clusters"
         sheet["H1"] = "Number of localizations per cluster"
-        sheet["I1"] = "Absolute density in clusters (molecules / um^2)"
+        sheet["I1"] = "Absolute density in clusters (molecules / μm^2)"
         sheet["J1"] = "Relative density in clusters"
     else
         sheet = xf[i + 1]
@@ -148,9 +148,9 @@ function writeresultstables_clusdoc(xf, r, roichannels, i, channel)
         sheet["A2"] = "Noncolocalized"
         sheet["A3"] = "Number of clusters"
         sheet["B3"] = "Number of localizations per cluster"
-        sheet["C3"] = "Area"
+        sheet["C3"] = "Area (nm^2)"
         sheet["D3"] = "Circularity"
-        sheet["E3"] = "Relative density / granularity"
+        sheet["E3"] = "Relative density"
     else
         sheet = xf[i + 1 + sheetoffset]
     end
@@ -165,7 +165,7 @@ function writeresultstables_clusdoc(xf, r, roichannels, i, channel)
             sheet[3, offset + 1] = "Number of localizations per cluster"
             sheet[3, offset + 2] = "Area (nm^2)"
             sheet[3, offset + 3] = "Circularity"
-            sheet[3, offset + 4] = "Relative density / granularity"
+            sheet[3, offset + 4] = "Relative density"
         end
 
         sheet[3 + r, offset] = channel.ncoclusters[j]
