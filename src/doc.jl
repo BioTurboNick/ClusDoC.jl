@@ -15,7 +15,7 @@ using GeometryBasics: Point
 
 Calculate the degree of colocalization for all points in each channel against all other channels. Computes a density gradient
 within `radiusmax` of each point with steps of size `radiusstep`. `localradius` is used to select foreground points with more
-neighbors than expected by chance. Results are added to the `Channel` objects. 
+neighbors than expected by chance. Results are added to the `Channel` objects. Units are nanometers.
 """
 function doc(channelnames, localizations, localradius, radiusmax, radiusstep, roiarea)
     length(channelnames) == length(localizations) ||
@@ -25,7 +25,8 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
     0 < radiusstep < radiusmax ||
         throw(ArgumentError("$(:radiusstep) must be positive and less than $(:radiusmax); got $radiuistep, $radiusmax"))
 
-    channels = ChannelResult.(channelnames, extractcoordinates.(localizations), length.(localizations) ./ roiarea, length(channelnames))
+    channels = ChannelResult.(channelnames, extractcoordinates.(localizations), length.(localizations), roiarea / 1_000_000,
+        length.(localizations) ./ (roiarea / 1_000_000), length(channelnames))
     #=
     The algorithm for coordinate-based colocalization (doi: 10.1007/s00418-011-0880-5) is:
     1. For each localization, count the number of localizations (other than itself) within a given radius for each channel.
@@ -50,7 +51,7 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
         # determine which localizations have more neighbors than expected by chance
         nneighbors = inrangecount(allneighbortree, c.coordinates, localradius)
         ntotal = size(allcoordinates, 2) - 1 # remove self
-        equivalentradii = equivalentradius.(nneighbors .- 1, ntotal, roiarea)
+        equivalentradii = equivalentradius.(nneighbors .- 1, ntotal, roiarea * 1_000_000)
         abovethreshold = equivalentradii .> localradius # maybe can replace with simple number threshold though, if don't need to compare across channels
         densities = pointdensity.(nneighbors, localradius)
         # calculate density gradient for each point vs. neighbors in each other channel

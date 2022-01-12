@@ -37,6 +37,11 @@ function smooth!(cr::Vector{ChannelResult}, epsilon, smoothingradius)
             cc.clusterdata.contour[ii] = contour
             cc.clusterdata.circularity[ii] = calculate_circularity(contourarea, contour)
         end
+
+        cc.meanclusterarea = mean(cc.clusterdata.area)
+        cc.meanclustercircularity = mean(cc.clusterdata.circularity)
+        cc.meanclusterabsolutedensity = mean(cc.clusterdata.size ./ (cc.clusterdata.area .* 1_000_000))
+        cc.meanclusterdensity = mean([mean(cc.pointdata.density[cluster.core_indices]) / cc.roidensity for (i, cluster) ∈ enumerate(cc.clusterdata.cluster)])
     end
 end
 
