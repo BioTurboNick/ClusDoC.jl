@@ -231,9 +231,10 @@
                 <property name="can_focus">False</property>
                 <property name="spacing">5</property>
                 <child>
-                  <object class="GtkButton" id="ch1colorbutton">
+                  <object class="GtkColorButton" id="ch1colorbutton">
                     <property name="label" translatable="yes">button</property>
                     <property name="can_focus">True</property>
+                    <property name="visible">False</property>
                     <property name="receives_default">True</property>
                   </object>
                   <packing>
@@ -243,9 +244,10 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkButton" id="ch2colorbutton">
+                  <object class="GtkColorButton" id="ch2colorbutton">
                     <property name="label" translatable="yes">button</property>
                     <property name="can_focus">True</property>
+                    <property name="visible">False</property>
                     <property name="receives_default">True</property>
                   </object>
                   <packing>
@@ -255,9 +257,10 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkButton" id="ch3colorbutton">
+                  <object class="GtkColorButton" id="ch3colorbutton">
                     <property name="label" translatable="yes">button</property>
                     <property name="can_focus">True</property>
+                    <property name="visible">False</property>
                     <property name="receives_default">True</property>
                   </object>
                   <packing>

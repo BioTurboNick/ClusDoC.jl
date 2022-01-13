@@ -26,6 +26,12 @@ savebtn = button(widget = b["roisave"])
 loadbtn = button(widget = b["roiload"])
 runbtn = button(widget = b["runbtn"])
 
+Gtk.GdkRGBA(c::RGBA) = Gtk.GdkRGBA(c.R, c.G, c.B, c.A)
+
+ch1colorbtn = colorbutton(RGBA(0, 0, 0, 0.5); widget = b["ch1colorbutton"])
+ch2colorbtn = colorbutton(RGBA(0, 0, 0, 0.5); widget = b["ch2colorbutton"])
+ch3colorbtn = colorbutton(RGBA(0, 0, 0, 0); widget = b["ch3colorbutton"])
+
 Gtk.showall(win)
 
 
@@ -97,14 +103,31 @@ function drawplots(_)
         generate_whole_localization_map(locs, outputfolder[], filename)
         # could probably generate plots, but delay saving until an output folder selected.
     end
-    selectedimg[] = load_image(fileselector[])
+    load_image(fileselector[])
 end
 
 function load_image(obs)
-    obs === nothing && return
+    if obs === nothing
+        set_gtk_property!(ch1colorbtn.widget, :visible, false)
+        set_gtk_property!(ch2colorbtn.widget, :visible, false)
+        set_gtk_property!(ch3colorbtn.widget, :visible, false)
+        return
+    end
     try
         # may fire before images created
         selectedimg[] = load(joinpath(outputfolder[], obs * ".png"))
+        
+        chnames = sort(unique(keys(localizations[][fileselector[]])))
+        set_gtk_property!(ch1colorbtn.widget, :label, chnames[1])
+        set_gtk_property!(ch1colorbtn.widget, :visible, true)
+        set_gtk_property!(ch2colorbtn.widget, :label, chnames[2])
+        set_gtk_property!(ch2colorbtn.widget, :visible, true)
+        if length(chnames) > 2
+            set_gtk_property!(ch3colorbtn.widget, :label, chnames[3])
+            set_gtk_property!(ch3colorbtn.widget, :visible, true)
+        else
+            set_gtk_property!(ch3colorbtn.widget, :visible, false)
+        end
     catch ex
         if !(ex isa ArgumentError)
             rethrow()

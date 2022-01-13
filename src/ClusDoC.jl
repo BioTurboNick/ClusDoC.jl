@@ -11,7 +11,7 @@ using NearestNeighbors
 using PolygonOps
 using StatsBase
 using XLSX
-using Gtk.ShortNames, GtkObservables, NativeFileDialog, Plots, LocalizationMicroscopy, ImageCore, ImageIO # find out which subpackages of Images I need
+using Gtk.ShortNames, GtkObservables, NativeFileDialog, Plots, LocalizationMicroscopy, ImageCore, ImageIO, ColorTypes # find out which subpackages of Images I need
 using JLD2
 using Statistics
 
