@@ -8,6 +8,7 @@ activedrawing = Observable(false)
 polyroibuilder = Observable([])
 nextlineposition = Observable{Union{Nothing, NTuple{2, Float64}}}(nothing)
 selectedroi = Observable{Union{Nothing, Int}}(nothing)
+colors = Observable{NTuple{3, Colorant}}(defaultcolors)
 
 # initialize UI elements
 b = Gtk.GtkBuilder(filename="gui/clusdoc.glade")
@@ -29,13 +30,14 @@ ch1label = label("Ch 1", widget = b["ch1label"])
 ch2label = label("Ch 2", widget = b["ch2label"])
 ch3label = label("Ch 3", widget = b["ch3label"])
 
-Gtk.GdkRGBA(c::RGBA) = Gtk.GdkRGBA(c.R, c.G, c.B, c.A)
-
-ch1colorbtn = colorbutton(RGBA(0, 0, 0, 0.5); widget = b["ch1colorbutton"])
-ch2colorbtn = colorbutton(RGBA(0, 0, 0, 0.5); widget = b["ch2colorbutton"])
-ch3colorbtn = colorbutton(RGBA(0, 0, 0, 0); widget = b["ch3colorbutton"])
+ch1colorbtn = colorbutton(defaultcolors[1]; widget = b["ch1colorbutton"])
+ch2colorbtn = colorbutton(defaultcolors[2]; widget = b["ch2colorbutton"])
+ch3colorbtn = colorbutton(defaultcolors[3]; widget = b["ch3colorbutton"])
 
 Gtk.showall(win)
+set_gtk_property!(b["ch1box"], :visible, false)
+set_gtk_property!(b["ch2box"], :visible, false)
+set_gtk_property!(b["ch3box"], :visible, false)
 
 
 # define event handlers
@@ -95,15 +97,13 @@ function load_data(obs)
     notify!(rois)
 end
 
-const colors = (:blue, :orange, :purple)
-
 function drawplots(_)
     outputfolder[] == "" && return
     for f ∈ inputfiles[]
         filename = basename(f)
         haskey(localizations[], filename) || continue
         locs = localizations[][filename]
-        generate_whole_localization_map(locs, outputfolder[], filename)
+        generate_whole_localization_map(locs, outputfolder[], filename, colors[])
         # could probably generate plots, but delay saving until an output folder selected.
     end
     load_image(fileselector[])
@@ -119,7 +119,7 @@ function load_image(obs)
     try
         # may fire before images created
         selectedimg[] = load(joinpath(outputfolder[], obs * ".png"))
-        
+
         chnames = sort(unique(keys(localizations[][fileselector[]])))
         set_gtk_property!(b["ch1label"], :label, chnames[1])
         set_gtk_property!(b["ch1box"], :visible, true)
@@ -208,9 +208,9 @@ end
 function run_clusdoc(_)
     roicount = sum((n = length(get(rois[], basename(filename), [])); n == 0 ? 1 : n) for filename ∈ inputfiles[])
     progress = progressbar(0:roicount; widget = b["statusprogress"]) # won't update live unless user enables more than one thread
-    #@idle_add Gtk.start(b["runspinner"]) # can't get spinner to appear at all, may be an SVG rendering or resource file issue 
+    #@idle_add Gtk.start(b["runspinner"]) # can't get spinner to appear at all, may be an SVG rendering or resource file issue
     #Threads.@spawn
-    clusdoc(inputfiles[], rois[], localizations[], outputfolder[], () -> @idle_add progress[] += 1)
+    clusdoc(inputfiles[], rois[], localizations[], outputfolder[], colors[], () -> @idle_add progress[] += 1)
     #Gtk.stop(b["runspinner"])
 end
 
@@ -309,6 +309,10 @@ on(delete_roi, deleteroibtn)
 on(save_rois, savebtn)
 on(load_rois, loadbtn)
 on(run_clusdoc, runbtn)
+on(c -> colors[] = (c, colors[][2:3]...), ch1colorbtn)
+on(c -> colors[] = (colors[][1], c, colors[][3]), ch2colorbtn)
+on(c -> colors[] = (colors[][1:2]..., c), ch3colorbtn)
+on(drawplots, colors)
 
 draw(draw_canvas, imgcanvas, selectedimg, rois, polyroibuilder, nextlineposition, selectedroi)
 

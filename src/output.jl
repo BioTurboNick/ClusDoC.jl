@@ -1,4 +1,9 @@
-function generate_whole_localization_map(locs::Dict{String, Vector{Localization}}, outputpath, filename)
+const defaultcolors =
+    (RGBA(0.0, 0.0, 1.0, 1.0), # blue
+    RGBA(1.0, 0.65, 0.0, 1.0), # orange
+    RGBA(0.5, 0.0, 0.5, 1.0))  # purple
+
+function generate_whole_localization_map(locs::Dict{String, Vector{Localization}}, outputpath, filename, colors)
     plot()
     for (i, chname) ∈ enumerate(sort(collect(keys(locs))))
         chpoints = extractcoordinates(locs[chname])
@@ -9,7 +14,7 @@ function generate_whole_localization_map(locs::Dict{String, Vector{Localization}
     Plots.savefig(imagepath)
 end
 
-function generate_localization_maps(cr::Vector{ChannelResult}, outputpath, filename, i, chnames)
+function generate_localization_maps(cr::Vector{ChannelResult}, outputpath, filename, i, chnames, colors)
     xmin, xmax = minimum(minimum(c.coordinates[1,:] for c ∈ cr)), maximum(maximum(c.coordinates[1,:] for c ∈ cr))
     ymin, ymax = minimum(minimum(c.coordinates[2,:] for c ∈ cr)), maximum(maximum(c.coordinates[2,:] for c ∈ cr))
     for j ∈ eachindex(cr)
@@ -38,7 +43,7 @@ function generate_doc_maps(cr::Vector{ChannelResult}, outputpath, filename, i, c
     end
 end
 
-function generate_cluster_maps(cr::Vector{ChannelResult}, outputpath, filename, i, chnames)
+function generate_cluster_maps(cr::Vector{ChannelResult}, outputpath, filename, i, chnames, colors)
     xmin, xmax = minimum(minimum(c.coordinates[1,:] for c ∈ cr)), maximum(maximum(c.coordinates[1,:] for c ∈ cr))
     ymin, ymax = minimum(minimum(c.coordinates[2,:] for c ∈ cr)), maximum(maximum(c.coordinates[2,:] for c ∈ cr))
     for j ∈ eachindex(cr)
@@ -52,7 +57,7 @@ function generate_cluster_maps(cr::Vector{ChannelResult}, outputpath, filename, 
     end
 end
 
-function generate_doc_histograms(cr::Vector{ChannelResult}, outputpath, filename, i, chnames)
+function generate_doc_histograms(cr::Vector{ChannelResult}, outputpath, filename, i, chnames, colors)
     # what to do about huge spike at -1?
     for j ∈ eachindex(cr)
         for k ∈ eachindex(cr)

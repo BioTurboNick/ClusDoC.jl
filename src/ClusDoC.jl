@@ -48,7 +48,7 @@ end
 
 # for some reason localizations is empty when getting to doc()
 
-function clusdoc(inputfiles, rois, localizations, outputfolder, update_callback = () -> nothing)
+function clusdoc(inputfiles, rois, localizations, outputfolder, colors = defaultcolors, update_callback = () -> nothing)
     isempty(rois) && return
     println("Starting ClusDoC")
 
@@ -75,7 +75,7 @@ function clusdoc(inputfiles, rois, localizations, outputfolder, update_callback 
             roilocalizations = get_roi_localizations(locs, chnames, roi)
             cr = clusdoc(chnames, roilocalizations, abs(PolygonOps.area(roi) * 40960 * 40960))
             push!(results, cr)
-            generate_roi_output(cr, outputfolder, filename, i, chnames)
+            generate_roi_output(cr, outputfolder, filename, i, chnames, colors)
             roi_endtime = time_ns()
             roi_elapsed_s = (roi_endtime - roi_starttime) / 1_000_000_000
             println("         finished in $roi_elapsed_s s")
@@ -112,11 +112,11 @@ function get_roi_localizations(locs, chnames, roi)
     return roilocalizations
 end
 
-function generate_roi_output(cr, outputfolder, filename, i, chnames)
-    generate_localization_maps(cr, outputfolder, filename, i, chnames)
+function generate_roi_output(cr, outputfolder, filename, i, chnames, colors)
+    generate_localization_maps(cr, outputfolder, filename, i, chnames, colors)
     generate_doc_maps(cr, outputfolder, filename, i, chnames)
-    generate_cluster_maps(cr, outputfolder, filename, i, chnames)
-    generate_doc_histograms(cr, outputfolder, filename, i, chnames)
+    generate_cluster_maps(cr, outputfolder, filename, i, chnames, colors)
+    generate_doc_histograms(cr, outputfolder, filename, i, chnames, colors)
 end
 
 const colocalized_threshold = 0.4

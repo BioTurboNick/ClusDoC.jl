@@ -251,7 +251,7 @@
                     <child>
                       <object class="GtkColorButton" id="ch1colorbutton">
                         <property name="can_focus">True</property>
-                        <property name="visible">False</property>
+                        <property name="visible">True</property>
                         <property name="receives_default">True</property>
                       </object>
                       <packing>
@@ -275,7 +275,7 @@
                     <child>
                       <object class="GtkLabel" id="ch2label">
                         <property name="visible">True</property>
-                        <property name="can_focus">False</property>
+                        <property name="can_focus">True</property>
                         <property name="halign">end</property>
                         <property name="label" translatable="yes">Ch 2</property>
                       </object>
@@ -288,7 +288,7 @@
                     <child>
                       <object class="GtkColorButton" id="ch2colorbutton">
                         <property name="can_focus">True</property>
-                        <property name="visible">False</property>
+                        <property name="visible">True</property>
                         <property name="receives_default">True</property>
                       </object>
                       <packing>
@@ -325,7 +325,7 @@
                     <child>
                       <object class="GtkColorButton" id="ch3colorbutton">
                         <property name="can_focus">True</property>
-                        <property name="visible">False</property>
+                        <property name="visible">True</property>
                         <property name="receives_default">True</property>
                       </object>
                       <packing>
