@@ -234,6 +234,7 @@ function draw_canvas(c, img, rois, newroi, nextlineposition, selectedroi)
 end
 
 function drawroi(ctx, roi, color, close = true)
+    # should activate spinner here when possible
     isempty(roi) && return
     p1 = first(roi)
     p = p1
