@@ -25,6 +25,9 @@ deleteroibtn = button(widget = b["roidelete"])
 savebtn = button(widget = b["roisave"])
 loadbtn = button(widget = b["roiload"])
 runbtn = button(widget = b["runbtn"])
+ch1label = label("Ch 1", widget = b["ch1label"])
+ch2label = label("Ch 2", widget = b["ch2label"])
+ch3label = label("Ch 3", widget = b["ch3label"])
 
 Gtk.GdkRGBA(c::RGBA) = Gtk.GdkRGBA(c.R, c.G, c.B, c.A)
 
@@ -108,9 +111,9 @@ end
 
 function load_image(obs)
     if obs === nothing
-        set_gtk_property!(ch1colorbtn.widget, :visible, false)
-        set_gtk_property!(ch2colorbtn.widget, :visible, false)
-        set_gtk_property!(ch3colorbtn.widget, :visible, false)
+        set_gtk_property!(b["ch1box"], :visible, false)
+        set_gtk_property!(b["ch2box"], :visible, false)
+        set_gtk_property!(b["ch3box"], :visible, false)
         return
     end
     try
@@ -118,15 +121,15 @@ function load_image(obs)
         selectedimg[] = load(joinpath(outputfolder[], obs * ".png"))
         
         chnames = sort(unique(keys(localizations[][fileselector[]])))
-        set_gtk_property!(ch1colorbtn.widget, :label, chnames[1])
-        set_gtk_property!(ch1colorbtn.widget, :visible, true)
-        set_gtk_property!(ch2colorbtn.widget, :label, chnames[2])
-        set_gtk_property!(ch2colorbtn.widget, :visible, true)
+        set_gtk_property!(b["ch1label"], :label, chnames[1])
+        set_gtk_property!(b["ch1box"], :visible, true)
+        set_gtk_property!(b["ch2label"], :label, chnames[2])
+        set_gtk_property!(b["ch2box"], :visible, true)
         if length(chnames) > 2
-            set_gtk_property!(ch3colorbtn.widget, :label, chnames[3])
-            set_gtk_property!(ch3colorbtn.widget, :visible, true)
+            set_gtk_property!(b["ch3label"], :label, chnames[3])
+            set_gtk_property!(b["ch3box"], :visible, true)
         else
-            set_gtk_property!(ch3colorbtn.widget, :visible, false)
+            set_gtk_property!(b["ch3box"], :visible, false)
         end
     catch ex
         if !(ex isa ArgumentError)
