@@ -15,6 +15,7 @@ b = Gtk.GtkBuilder(filename="gui/clusdoc.glade")
 imgcanvas = canvas(UserUnit, 500, 500)
 push!(b["canvasbox"], imgcanvas)
 win = b["mainwin"]
+Gtk.showall(win)
 
 inputbtn = button(widget = b["inputbtn"])
 inputtxt = textbox(String; widget = b["inputtxt"])
@@ -33,11 +34,6 @@ ch3label = label("Ch 3", widget = b["ch3label"])
 ch1colorbtn = colorbutton(defaultcolors[1]; widget = b["ch1colorbutton"])
 ch2colorbtn = colorbutton(defaultcolors[2]; widget = b["ch2colorbutton"])
 ch3colorbtn = colorbutton(defaultcolors[3]; widget = b["ch3colorbutton"])
-
-Gtk.showall(win)
-set_gtk_property!(b["ch1box"], :visible, false)
-set_gtk_property!(b["ch2box"], :visible, false)
-set_gtk_property!(b["ch3box"], :visible, false)
 
 
 # define event handlers
@@ -111,9 +107,9 @@ end
 
 function load_image(obs)
     if obs === nothing
-        set_gtk_property!(b["ch1box"], :visible, false)
-        set_gtk_property!(b["ch2box"], :visible, false)
-        set_gtk_property!(b["ch3box"], :visible, false)
+        visible(b["ch1box"], false)
+        visible(b["ch2box"], false)
+        visible(b["ch3box"], false)
         return
     end
     try
@@ -121,15 +117,15 @@ function load_image(obs)
         selectedimg[] = load(joinpath(outputfolder[], obs * ".png"))
 
         chnames = sort(unique(keys(localizations[][fileselector[]])))
-        set_gtk_property!(b["ch1label"], :label, chnames[1])
-        set_gtk_property!(b["ch1box"], :visible, true)
-        set_gtk_property!(b["ch2label"], :label, chnames[2])
-        set_gtk_property!(b["ch2box"], :visible, true)
+        ch1label[] = chnames[1]
+        visible(b["ch1box"], true)
+        ch2label[] = chnames[2]
+        visible(b["ch2box"], true)
         if length(chnames) > 2
-            set_gtk_property!(b["ch3label"], :label, chnames[3])
-            set_gtk_property!(b["ch3box"], :visible, true)
+            ch3label[] = chnames[3]
+            visible(b["ch3box"], true)
         else
-            set_gtk_property!(b["ch3box"], :visible, false)
+            visible(b["ch3box"], false)
         end
     catch ex
         if !(ex isa ArgumentError)
@@ -319,8 +315,3 @@ draw(draw_canvas, imgcanvas, selectedimg, rois, polyroibuilder, nextlineposition
 
 on(onmouseclick, imgcanvas.mouse.buttonpress)
 on(onmousemove, imgcanvas.mouse.motion)
-
-
-
-# should have a colorset selector?
-

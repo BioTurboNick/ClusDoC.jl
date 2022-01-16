@@ -233,6 +233,7 @@
                 <child>
                   <object class="GtkBox" id="ch1box">
                     <property name="visible">False</property>
+                    <property name="no_show_all">True</property>
                     <property name="can_focus">False</property>
                     <property name="spacing">3</property>
                     <child>
@@ -270,6 +271,7 @@
                 <child>
                   <object class="GtkBox" id="ch2box">
                     <property name="visible">False</property>
+                    <property name="no_show_all">True</property>
                     <property name="can_focus">False</property>
                     <property name="spacing">3</property>
                     <child>
@@ -307,6 +309,7 @@
                 <child>
                   <object class="GtkBox" id="ch3box">
                     <property name="visible">False</property>
+                    <property name="no_show_all">True</property>
                     <property name="can_focus">False</property>
                     <property name="spacing">3</property>
                     <child>
