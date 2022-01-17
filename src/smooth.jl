@@ -1,5 +1,3 @@
-
-# huge memory usage here, and taking a long time.
 function smooth!(cr::Vector{ChannelResult}, epsilon, smoothingradius)
     for (i, cc) ∈ enumerate(cr)
         sigmas = smoothingradius

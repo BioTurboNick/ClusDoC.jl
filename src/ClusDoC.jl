@@ -18,10 +18,13 @@ using Statistics
 export clusdoc, load_raw_results
 
 include("types/ChannelResult.jl")
+include("types/ClusDoCParameters.jl")
 include("doc.jl")
 include("dbscan.jl")
 include("smooth.jl")
 include("output.jl")
+
+const defaultparameters = ClusDoCParameters(20, 500, 10, 20, 3, true, 15)
 
 """
     clusdoc()
@@ -38,17 +41,17 @@ clusdoc() = (include("src/gui.jl"); nothing)
 
 # profiling - 2300 frame in nearest neighbors `inrange`, 3000 frames in `imfilter`, 200 spent in `rankcorr` (out of 6000)
 # should check out rankcorr, it's the one I haven't tried to optimize at all - checked and it's about minimal
-function clusdoc(channelnames, localizations, roiarea)
-    cr = doc(channelnames, localizations, 20, 500, 10, roiarea)
-    dbscan!(cr, 20, 3, true, 20)
-    smooth!(cr, 20, 15)
+function clusdoc(channelnames, localizations, roiarea, parameters::ClusDoCParameters)
+    cr = doc(channelnames, localizations, parameters.doc_localradius, parameters.doc_radiusmax, parameters.doc_radiusstep, roiarea)
+    dbscan!(cr, parameters.cluster_epsilon, parameters.cluster_minpoints, true, parameters.doc_localradius)
+    smooth!(cr, parmeters.cluster_epsilon, parameters.cluster_smoothingradius)
     calculate_colocalized_cluster_data!(cr)
     return cr
 end
 
 # for some reason localizations is empty when getting to doc()
 
-function clusdoc(inputfiles, rois, localizations, outputfolder, colors = defaultcolors, update_callback = () -> nothing)
+function clusdoc(inputfiles, rois, localizations, outputfolder, colors = defaultcolors, parameters = defaultparameters, update_callback = () -> nothing)
     isempty(rois) && return
     println("Starting ClusDoC")
 
@@ -73,7 +76,7 @@ function clusdoc(inputfiles, rois, localizations, outputfolder, colors = default
             roi_starttime = time_ns()
             roi = [(x, 1 - y) for (x, y) ∈ roi] # invert y to match localization coordinates - but actually I might need to invert the original image instead
             roilocalizations = get_roi_localizations(locs, chnames, roi)
-            cr = clusdoc(chnames, roilocalizations, abs(PolygonOps.area(roi) * 40960 * 40960))
+            cr = clusdoc(chnames, roilocalizations, abs(PolygonOps.area(roi) * 40960 * 40960), parameters)
             push!(results, cr)
             generate_roi_output(cr, outputfolder, filename, i, chnames, colors)
             roi_endtime = time_ns()

@@ -9,6 +9,7 @@ polyroibuilder = Observable([])
 nextlineposition = Observable{Union{Nothing, NTuple{2, Float64}}}(nothing)
 selectedroi = Observable{Union{Nothing, Int}}(nothing)
 colors = Observable{NTuple{3, Colorant}}(defaultcolors)
+parameters = Observable{ClusDoCParameters}(defaultparameters)
 
 # initialize UI elements
 b = Gtk.GtkBuilder(filename="gui/clusdoc.glade")
@@ -26,6 +27,7 @@ addroibtn = button(widget = b["roiadd"])
 deleteroibtn = button(widget = b["roidelete"])
 savebtn = button(widget = b["roisave"])
 loadbtn = button(widget = b["roiload"])
+settingsbtn = button(widget = b["opensettings"])
 runbtn = button(widget = b["runbtn"])
 ch1label = label("Ch 1", widget = b["ch1label"])
 ch2label = label("Ch 2", widget = b["ch2label"])
@@ -34,6 +36,16 @@ ch3label = label("Ch 3", widget = b["ch3label"])
 ch1colorbtn = colorbutton(defaultcolors[1]; widget = b["ch1colorbutton"])
 ch2colorbtn = colorbutton(defaultcolors[2]; widget = b["ch2colorbutton"])
 ch3colorbtn = colorbutton(defaultcolors[3]; widget = b["ch3colorbutton"])
+
+localradiustxt = textbox(string(defaultparameters.doc_localradius); widget = b["localradiusinput"])
+radiusmaxtxt = textbox(string(defaultparameters.doc_radiusmax); widget = b["radiusmaxinput"])
+radiussteptxt = textbox(string(defaultparameters.doc_radiusstep); widget = b["radiusstepinput"])
+epsilontxt = textbox(string(defaultparameters.cluster_epsilon); widget = b["epsiloninput"])
+minpointstxt = textbox(string(defaultparameters.cluster_minpoints); widget = b["minpointsinput"])
+usethreshholdcheckbox = checkbox(true, widget = b["usethresholdinput"])
+smoothingradiustxt = textbox(string(defaultparameters.cluster_smoothingradius); widget = b["smoothingradiusinput"])
+settingsok = button(widget = b["settingsok"])
+settingsreset = button(widget = b["settingsreset"])
 
 
 # define event handlers
@@ -134,21 +146,21 @@ function load_image(obs)
     end
 end
 
-function change_file(obs)
+function change_file(_)
     selectedroi[] = nothing
 end
 
-function start_roi_drawing(obs)
+function start_roi_drawing(_)
     activedrawing[] = true
     selectedroi[] = nothing
 end
 
-function delete_roi(obs)
+function delete_roi(_)
     deleteat!(rois[][fileselector[]], selectedroi[])
     selectedroi[] = nothing
 end
 
-function save_rois(obs)
+function save_rois(_)
     outputfolder !== "" || return
     roifile = joinpath(outputfolder[], "roicoordinates.txt")
 
@@ -167,7 +179,7 @@ function save_rois(obs)
     end
 end
 
-function load_rois(obs)
+function load_rois(_)
     # if file doesn't exist, ask for location
     outputfolder !== "" || return
     roifile = joinpath(outputfolder[], "roicoordinates.txt")
@@ -199,6 +211,31 @@ function load_rois(obs)
         filename != "" && (roidict[filename] = filerois)
     end
     rois[] = roidict
+end
+
+function edit_settings(_)
+    Gtk.showall(b["settingsdialog"])
+end
+
+function save_settings(_)
+    try
+        parameters[] = ClusDoCParameters(parse.(Float64, (localradiustxt[], radiusmaxtxt[], radiussteptxt[], epsilontxt[], minpointstxt[]))..., usethreshholdcheckbox[], parse(Float64, smoothingradiustxt[]))
+        Gtk.hideall(b["settingsdialog"])
+    catch
+        reset_settings(_)
+    end
+end
+
+function reset_settings(_)
+    parameters[] = defaultparameters
+
+    localradiustxt[] = string(defaultparameters.doc_localradius)
+    radiusmaxtxt[] = string(defaultparameters.doc_radiusmax)
+    radiussteptxt[] = string(defaultparameters.doc_radiusstep)
+    epsilontxt[] = string(defaultparameters.cluster_epsilon)
+    minpointstxt[] = string(defaultparameters.cluster_minpoints)
+    usethreshholdcheckbox[] = true
+    smoothingradiustxt[] = string(defaultparameters.cluster_smoothingradius)
 end
 
 function run_clusdoc(_)
@@ -305,11 +342,14 @@ on(start_roi_drawing, addroibtn)
 on(delete_roi, deleteroibtn)
 on(save_rois, savebtn)
 on(load_rois, loadbtn)
+on(edit_settings, settingsbtn)
 on(run_clusdoc, runbtn)
 on(c -> colors[] = (c, colors[][2:3]...), ch1colorbtn)
 on(c -> colors[] = (colors[][1], c, colors[][3]), ch2colorbtn)
 on(c -> colors[] = (colors[][1:2]..., c), ch3colorbtn)
 on(drawplots, colors)
+on(save_settings, settingsok)
+on(reset_settings, settingsreset)
 
 draw(draw_canvas, imgcanvas, selectedimg, rois, polyroibuilder, nextlineposition, selectedroi)
 
