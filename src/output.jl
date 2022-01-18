@@ -1,7 +1,4 @@
-const defaultcolors =
-    (RGBA(0.0, 0.0, 1.0, 1.0), # blue
-    RGBA(1.0, 0.65, 0.0, 1.0), # orange
-    RGBA(0.5, 0.0, 0.5, 1.0))  # purple
+const defaultcolors = (colorant"blue", colorant"orange", colorant"purple")
 
 function generate_whole_localization_map(locs::Dict{String, Vector{Localization}}, outputpath, filename, colors)
     plot()

@@ -37,13 +37,13 @@ ch1colorbtn = colorbutton(defaultcolors[1]; widget = b["ch1colorbutton"])
 ch2colorbtn = colorbutton(defaultcolors[2]; widget = b["ch2colorbutton"])
 ch3colorbtn = colorbutton(defaultcolors[3]; widget = b["ch3colorbutton"])
 
-localradiustxt = textbox(string(defaultparameters.doc_localradius); widget = b["localradiusinput"])
-radiusmaxtxt = textbox(string(defaultparameters.doc_radiusmax); widget = b["radiusmaxinput"])
-radiussteptxt = textbox(string(defaultparameters.doc_radiusstep); widget = b["radiusstepinput"])
-epsilontxt = textbox(string(defaultparameters.cluster_epsilon); widget = b["epsiloninput"])
-minpointstxt = textbox(string(defaultparameters.cluster_minpoints); widget = b["minpointsinput"])
-usethreshholdcheckbox = checkbox(true, widget = b["usethresholdinput"])
-smoothingradiustxt = textbox(string(defaultparameters.cluster_smoothingradius); widget = b["smoothingradiusinput"])
+localradiustxt = textbox(defaultparameters.doc_localradius; widget = b["localradiusinput"], gtksignal = "changed")
+radiusmaxtxt = textbox(defaultparameters.doc_radiusmax; widget = b["radiusmaxinput"], gtksignal = "changed")
+radiussteptxt = textbox(defaultparameters.doc_radiusstep; widget = b["radiusstepinput"], gtksignal = "changed")
+epsilontxt = textbox(defaultparameters.cluster_epsilon; widget = b["epsiloninput"], gtksignal = "changed")
+minpointstxt = textbox(defaultparameters.cluster_minpoints; widget = b["minpointsinput"], gtksignal = "changed")
+usethreshholdcheckbox = checkbox(defaultparameters.cluster_uselocalradius_threshold, widget = b["usethresholdinput"])
+smoothingradiustxt = textbox(defaultparameters.cluster_smoothingradius; widget = b["smoothingradiusinput"], gtksignal = "changed")
 settingsok = button(widget = b["settingsok"])
 settingsreset = button(widget = b["settingsreset"])
 
@@ -219,23 +219,26 @@ end
 
 function save_settings(_)
     try
-        parameters[] = ClusDoCParameters(parse.(Float64, (localradiustxt[], radiusmaxtxt[], radiussteptxt[], epsilontxt[], minpointstxt[]))..., usethreshholdcheckbox[], parse(Float64, smoothingradiustxt[]))
+        parameters[] = ClusDoCParameters(localradiustxt[], radiusmaxtxt[], radiussteptxt[], epsilontxt[], minpointstxt[], usethreshholdcheckbox[], smoothingradiustxt[])      
         Gtk.hideall(b["settingsdialog"])
     catch
-        reset_settings(_)
+        cancel_settings(nothing)
     end
 end
 
 function reset_settings(_)
     parameters[] = defaultparameters
+    cancel_settings(nothing)
+end
 
-    localradiustxt[] = string(defaultparameters.doc_localradius)
-    radiusmaxtxt[] = string(defaultparameters.doc_radiusmax)
-    radiussteptxt[] = string(defaultparameters.doc_radiusstep)
-    epsilontxt[] = string(defaultparameters.cluster_epsilon)
-    minpointstxt[] = string(defaultparameters.cluster_minpoints)
-    usethreshholdcheckbox[] = true
-    smoothingradiustxt[] = string(defaultparameters.cluster_smoothingradius)
+function cancel_settings(_)
+    localradiustxt[] = string(parameters[].doc_localradius)
+    radiusmaxtxt[] = string(parameters[].doc_radiusmax)
+    radiussteptxt[] = string(parameters[].doc_radiusstep)
+    epsilontxt[] = string(parameters[].cluster_epsilon)
+    minpointstxt[] = string(parameters[].cluster_minpoints)
+    usethreshholdcheckbox[] = parameters[].cluster_uselocalradius_threshold
+    smoothingradiustxt[] = string(parameters[].cluster_smoothingradius)
 end
 
 function run_clusdoc(_)
@@ -350,8 +353,10 @@ on(c -> colors[] = (colors[][1:2]..., c), ch3colorbtn)
 on(drawplots, colors)
 on(save_settings, settingsok)
 on(reset_settings, settingsreset)
+signal_connect(cancel_settings, b["settingsdialog"], "close")
 
 draw(draw_canvas, imgcanvas, selectedimg, rois, polyroibuilder, nextlineposition, selectedroi)
 
 on(onmouseclick, imgcanvas.mouse.buttonpress)
 on(onmousemove, imgcanvas.mouse.motion)
+
