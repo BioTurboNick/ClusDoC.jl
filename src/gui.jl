@@ -360,3 +360,4 @@ draw(draw_canvas, imgcanvas, selectedimg, rois, polyroibuilder, nextlineposition
 on(onmouseclick, imgcanvas.mouse.buttonpress)
 on(onmousemove, imgcanvas.mouse.motion)
 
+# need entry for image dimensions
