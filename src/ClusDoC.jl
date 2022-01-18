@@ -49,8 +49,6 @@ function clusdoc(channelnames, localizations, roiarea, parameters::ClusDoCParame
     return cr
 end
 
-# for some reason localizations is empty when getting to doc()
-
 function clusdoc(inputfiles, rois, localizations, outputfolder, colors = defaultcolors, parameters = defaultparameters, update_callback = () -> nothing)
     isempty(rois) && return
     println("Starting ClusDoC")

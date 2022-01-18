@@ -244,10 +244,10 @@ end
 function run_clusdoc(_)
     roicount = sum((n = length(get(rois[], basename(filename), [])); n == 0 ? 1 : n) for filename ∈ inputfiles[])
     progress = progressbar(0:roicount; widget = b["statusprogress"]) # won't update live unless user enables more than one thread
-    #@idle_add Gtk.start(b["runspinner"]) # can't get spinner to appear at all, may be an SVG rendering or resource file issue
+    Gtk.start(b["runspinner"])
     #Threads.@spawn
     clusdoc(inputfiles[], rois[], localizations[], outputfolder[], colors[], () -> @idle_add progress[] += 1)
-    #Gtk.stop(b["runspinner"])
+    Gtk.stop(b["runspinner"])
 end
 
 
