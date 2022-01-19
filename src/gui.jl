@@ -41,7 +41,7 @@ localradiustxt = textbox(defaultparameters.doc_localradius; widget = b["localrad
 radiusmaxtxt = textbox(defaultparameters.doc_radiusmax; widget = b["radiusmaxinput"], gtksignal = "changed")
 radiussteptxt = textbox(defaultparameters.doc_radiusstep; widget = b["radiusstepinput"], gtksignal = "changed")
 epsilontxt = textbox(defaultparameters.cluster_epsilon; widget = b["epsiloninput"], gtksignal = "changed")
-minpointstxt = textbox(defaultparameters.cluster_minpoints; widget = b["minpointsinput"], gtksignal = "changed")
+minpointstxt = textbox(defaultparameters.cluster_minpoints; widget = b["minpointsinput"])
 usethreshholdcheckbox = checkbox(defaultparameters.cluster_uselocalradius_threshold, widget = b["usethresholdinput"])
 smoothingradiustxt = textbox(defaultparameters.cluster_smoothingradius; widget = b["smoothingradiusinput"], gtksignal = "changed")
 settingsok = button(widget = b["settingsok"])
@@ -77,7 +77,9 @@ end
 function set_outputfolder(_)
     path = pick_folder()
     if path != ""
-        outputfolder[] = joinpath(path, "ClusDoC Results")
+        outputpath = joinpath(path, "ClusDoC Results")
+        mkpath(outputpath)
+        outputfolder[] = outputpath
     end
 end
 
@@ -220,7 +222,7 @@ end
 function save_settings(_)
     try
         parameters[] = ClusDoCParameters(localradiustxt[], radiusmaxtxt[], radiussteptxt[], epsilontxt[], minpointstxt[], usethreshholdcheckbox[], smoothingradiustxt[])      
-        Gtk.hideall(b["settingsdialog"])
+        Gtk.hide(b["settingsdialog"])
     catch
         cancel_settings(nothing)
     end
@@ -232,16 +234,23 @@ function reset_settings(_)
 end
 
 function cancel_settings(_)
-    localradiustxt[] = string(parameters[].doc_localradius)
-    radiusmaxtxt[] = string(parameters[].doc_radiusmax)
-    radiussteptxt[] = string(parameters[].doc_radiusstep)
-    epsilontxt[] = string(parameters[].cluster_epsilon)
-    minpointstxt[] = string(parameters[].cluster_minpoints)
+    localradiustxt[] = parameters[].doc_localradius
+    radiusmaxtxt[] = parameters[].doc_radiusmax
+    radiussteptxt[] = parameters[].doc_radiusstep
+    epsilontxt[] = parameters[].cluster_epsilon
+    minpointstxt[] = parameters[].cluster_minpoints
     usethreshholdcheckbox[] = parameters[].cluster_uselocalradius_threshold
-    smoothingradiustxt[] = string(parameters[].cluster_smoothingradius)
+    smoothingradiustxt[] = parameters[].cluster_smoothingradius
+end
+
+function on_settingsdialog_delete(d, _)
+    cancel_settings(nothing)
+    Gtk.hide(d)
+    return true # prevent dialog from being destroyed
 end
 
 function run_clusdoc(_)
+    save_rois(nothing)
     roicount = sum((n = length(get(rois[], basename(filename), [])); n == 0 ? 1 : n) for filename ∈ inputfiles[])
     progress = progressbar(0:roicount; widget = b["statusprogress"]) # won't update live unless user enables more than one thread
     Gtk.start(b["runspinner"])
@@ -249,6 +258,10 @@ function run_clusdoc(_)
     clusdoc(inputfiles[], rois[], localizations[], outputfolder[], colors[], () -> @idle_add progress[] += 1)
     Gtk.stop(b["runspinner"])
 end
+
+#=ISSUES:
+Make ROI saving automatic when running
+=#
 
 
 function draw_canvas(c, img, rois, newroi, nextlineposition, selectedroi)
@@ -353,7 +366,7 @@ on(c -> colors[] = (colors[][1:2]..., c), ch3colorbtn)
 on(drawplots, colors)
 on(save_settings, settingsok)
 on(reset_settings, settingsreset)
-signal_connect(cancel_settings, b["settingsdialog"], "close")
+signal_connect(on_settingsdialog_delete, b["settingsdialog"], "delete-event")
 
 draw(draw_canvas, imgcanvas, selectedimg, rois, polyroibuilder, nextlineposition, selectedroi)
 
