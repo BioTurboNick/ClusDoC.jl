@@ -9,7 +9,9 @@ polyroibuilder = Observable([])
 nextlineposition = Observable{Union{Nothing, NTuple{2, Float64}}}(nothing)
 selectedroi = Observable{Union{Nothing, Int}}(nothing)
 colors = Observable{NTuple{3, Colorant}}(defaultcolors)
-parameters = Observable{ClusDoCParameters}(defaultparameters)
+docparameters = Observable{DoCParameters}(defaultdocparameters)
+clusterparameters = Observable{Vector{ClusterParameters}}(fill(defaultclusterparameters, 3))
+isrunning = Observable(false)
 
 # initialize UI elements
 b = Gtk.GtkBuilder(filename="gui/clusdoc.glade")
@@ -37,13 +39,21 @@ ch1colorbtn = colorbutton(defaultcolors[1]; widget = b["ch1colorbutton"])
 ch2colorbtn = colorbutton(defaultcolors[2]; widget = b["ch2colorbutton"])
 ch3colorbtn = colorbutton(defaultcolors[3]; widget = b["ch3colorbutton"])
 
-localradiustxt = textbox(defaultparameters.doc_localradius; widget = b["localradiusinput"], gtksignal = "changed")
-radiusmaxtxt = textbox(defaultparameters.doc_radiusmax; widget = b["radiusmaxinput"], gtksignal = "changed")
-radiussteptxt = textbox(defaultparameters.doc_radiusstep; widget = b["radiusstepinput"], gtksignal = "changed")
-epsilontxt = textbox(defaultparameters.cluster_epsilon; widget = b["epsiloninput"], gtksignal = "changed")
-minpointstxt = textbox(defaultparameters.cluster_minpoints; widget = b["minpointsinput"])
-usethreshholdcheckbox = checkbox(defaultparameters.cluster_uselocalradius_threshold, widget = b["usethresholdinput"])
-smoothingradiustxt = textbox(defaultparameters.cluster_smoothingradius; widget = b["smoothingradiusinput"], gtksignal = "changed")
+localradiustxt = textbox(defaultdocparameters.localradius; widget = b["localradiusinput"], gtksignal = "focus-out-event")
+radiusmaxtxt = textbox(defaultdocparameters.radiusmax; widget = b["radiusmaxinput"], gtksignal = "focus-out-event")
+radiussteptxt = textbox(defaultdocparameters.radiusstep; widget = b["radiusstepinput"], gtksignal = "focus-out-event")
+epsilontxt1 = textbox(defaultclusterparameters.epsilon; widget = b["epsiloninput"], gtksignal = "focus-out-event")
+minpointstxt1 = textbox(defaultclusterparameters.minpoints; widget = b["minpointsinput"], gtksignal = "focus-out-event")
+usethreshholdcheckbox1 = checkbox(defaultclusterparameters.uselocalradius_threshold, widget = b["usethresholdinput"])
+smoothingradiustxt1 = textbox(defaultclusterparameters.smoothingradius; widget = b["smoothingradiusinput"], gtksignal = "focus-out-event")
+epsilontxt2 = textbox(defaultclusterparameters.epsilon; widget = b["epsiloninput1"], gtksignal = "focus-out-event")
+minpointstxt2 = textbox(defaultclusterparameters.minpoints; widget = b["minpointsinput1"], gtksignal = "focus-out-event")
+usethreshholdcheckbox2 = checkbox(defaultclusterparameters.uselocalradius_threshold, widget = b["usethresholdinput1"])
+smoothingradiustxt2 = textbox(defaultclusterparameters.smoothingradius; widget = b["smoothingradiusinput1"], gtksignal = "focus-out-event")
+epsilontxt3 = textbox(defaultclusterparameters.epsilon; widget = b["epsiloninput2"], gtksignal = "focus-out-event")
+minpointstxt3 = textbox(defaultclusterparameters.minpoints; widget = b["minpointsinput2"], gtksignal = "focus-out-event")
+usethreshholdcheckbox3 = checkbox(defaultclusterparameters.uselocalradius_threshold, widget = b["usethresholdinput2"])
+smoothingradiustxt3 = textbox(defaultclusterparameters.smoothingradius; widget = b["smoothingradiusinput2"], gtksignal = "focus-out-event")
 settingsok = button(widget = b["settingsok"])
 settingsreset = button(widget = b["settingsreset"])
 
@@ -221,7 +231,10 @@ end
 
 function save_settings(_)
     try
-        parameters[] = ClusDoCParameters(localradiustxt[], radiusmaxtxt[], radiussteptxt[], epsilontxt[], minpointstxt[], usethreshholdcheckbox[], smoothingradiustxt[])      
+        docparameters[] = DoCParameters(localradiustxt[], radiusmaxtxt[], radiussteptxt[])
+        clusterparameters[] = [ClusterParameters(epsilontxt1[], minpointstxt1[], usethreshholdcheckbox1[], smoothingradiustxt1[]),
+                               ClusterParameters(epsilontxt2[], minpointstxt2[], usethreshholdcheckbox2[], smoothingradiustxt2[]),
+                               ClusterParameters(epsilontxt3[], minpointstxt3[], usethreshholdcheckbox3[], smoothingradiustxt3[])]
         Gtk.hide(b["settingsdialog"])
     catch
         cancel_settings(nothing)
@@ -229,18 +242,27 @@ function save_settings(_)
 end
 
 function reset_settings(_)
-    parameters[] = defaultparameters
+    docparameters[] = defaultparameters
+    clusterparameters[] = fill(defaultclusterparameters, 3)
     cancel_settings(nothing)
 end
 
 function cancel_settings(_)
-    localradiustxt[] = parameters[].doc_localradius
-    radiusmaxtxt[] = parameters[].doc_radiusmax
-    radiussteptxt[] = parameters[].doc_radiusstep
-    epsilontxt[] = parameters[].cluster_epsilon
-    minpointstxt[] = parameters[].cluster_minpoints
-    usethreshholdcheckbox[] = parameters[].cluster_uselocalradius_threshold
-    smoothingradiustxt[] = parameters[].cluster_smoothingradius
+    localradiustxt[] = docparameters[].localradius
+    radiusmaxtxt[] = docparameters[].radiusmax
+    radiussteptxt[] = docparameters[].radiusstep
+    epsilontxt1[] = clusterparameters[][1].epsilon
+    minpointstxt1[] = clusterparameters[][1].minpoints
+    usethreshholdcheckbox1[] = clusterparameters[][1].uselocalradius_threshold
+    smoothingradiustxt1[] = clusterparameters[][1].smoothingradius
+    epsilontxt2[] = clusterparameters[][2].epsilon
+    minpointstxt2[] = clusterparameters[][2].minpoints
+    usethreshholdcheckbox2[] = clusterparameters[][2].uselocalradius_threshold
+    smoothingradiustxt2[] = clusterparameters[][2].smoothingradius
+    epsilontxt3[] = clusterparameters[][3].epsilon
+    minpointstxt3[] = clusterparameters[][3].minpoints
+    usethreshholdcheckbox3[] = clusterparameters[][3].uselocalradius_threshold
+    smoothingradiustxt3[] = clusterparameters[][3].smoothingradius
 end
 
 function on_settingsdialog_delete(d, _)
@@ -250,17 +272,19 @@ function on_settingsdialog_delete(d, _)
 end
 
 function run_clusdoc(_)
+    isrunning[] && return
+    isrunning[] = true
     save_rois(nothing)
     roicount = sum((n = length(get(rois[], basename(filename), [])); n == 0 ? 1 : n) for filename ∈ inputfiles[])
     progress = progressbar(0:roicount; widget = b["statusprogress"]) # won't update live unless user enables more than one thread
     Gtk.start(b["runspinner"])
-    #Threads.@spawn
-    clusdoc(inputfiles[], rois[], localizations[], outputfolder[], colors[], () -> @idle_add progress[] += 1)
+    clusdoc(inputfiles[], rois[], localizations[], outputfolder[], colors[], docparameters[], clusterparameters[], () -> @idle_add progress[] += 1)
     Gtk.stop(b["runspinner"])
+    isrunning[] = false
 end
 
 #=ISSUES:
-Make ROI saving automatic when running
+Need to do parameters for each channel
 =#
 
 

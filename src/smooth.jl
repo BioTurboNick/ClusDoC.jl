@@ -1,6 +1,6 @@
-function smooth!(cr::Vector{ChannelResult}, epsilon, smoothingradius)
+function smooth!(cr::Vector{ChannelResult}, clusterparameters)
     for (i, cc) ∈ enumerate(cr)
-        sigmas = smoothingradius
+        sigmas = clusterparameters[i].smoothingradius
         cccoordinates = @view cc.coordinates[:, cc.pointdata.abovethreshold]
         clustercoordinates = [@view cccoordinates[:, union(cluster.core_indices, cluster.boundary_indices)] for cluster ∈ cc.clusterdata.cluster]
         is2d = any((@view clustercoordinates[3, :]) .!= 0)
@@ -10,7 +10,7 @@ function smooth!(cr::Vector{ChannelResult}, epsilon, smoothingradius)
         # NOTE: Currently, 3d may result in OOM errors
         bounds1 =  extrema.(clustercoordinates, dims = 2)
         lengths = [last.(b) .- first.(b) for b in bounds1]
-        boxsizes = 0.5 .* maximum.(lengths) .+ (epsilon + 10)
+        boxsizes = 0.5 .* maximum.(lengths) .+ (clusterparameters[i].epsilon + 10)
 
         centers = [(last.(b) .+ first.(b)) ./ 2 for b ∈ bounds1]
         boxmins = [cen .- bs for (cen, bs) ∈ zip(centers, boxsizes)]

@@ -1,9 +1,12 @@
-struct ClusDoCParameters
-    doc_localradius::Float64               # default 20
-    doc_radiusmax::Float64                 # default 500
-    doc_radiusstep::Float64                # default 10
-    cluster_epsilon::Float64               # default 20
-    cluster_minpoints::Int                 # default 3
-    cluster_uselocalradius_threshold::Bool # default true
-    cluster_smoothingradius::Float64       # default 15
+struct ClusterParameters
+    epsilon::Float64               # default 20
+    minpoints::Int                 # default 3
+    uselocalradius_threshold::Bool # default true
+    smoothingradius::Int       # default 15
+end
+
+struct DoCParameters
+    localradius::Float64               # default 20
+    radiusmax::Float64                 # default 500
+    radiusstep::Float64                # default 10
 end

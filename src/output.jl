@@ -72,15 +72,13 @@ end
 # XLSX creates a fixable error in the output with NaN values
 replacenan(data) = isnan(data) ? "" : data
 
-roiresults1 = nothing
-function writeresultstables(roiresults::Vector{Vector{ChannelResult}}, path)
-    global roiresults1 = roiresults
+function writeresultstables(roiresults::Vector{Vector{ChannelResult}}, parameters, path)
     XLSX.openxlsx(path, mode = "w") do xf
         writeresultstables_colocalization(xf, roiresults)
         
         for (r, roichannels) ∈ enumerate(roiresults)
             for (i, channel) ∈ enumerate(roichannels)
-                writeresultstables_clustering(xf, r, i, channel)
+                writeresultstables_clustering(xf, r, channel)
             end
         end
         for (r, roichannels) ∈ enumerate(roiresults)
@@ -88,6 +86,8 @@ function writeresultstables(roiresults::Vector{Vector{ChannelResult}}, path)
                 writeresultstables_clusdoc(xf, r, roichannels, i, channel)
             end
         end
+
+        writeresultstables_parameters(xf, parameters)
     end
 end
 
@@ -106,11 +106,11 @@ function writeresultstables_colocalization(xf, roiresults)
     end
 end
 
-function writeresultstables_clustering(xf, r, i, channel)
+function writeresultstables_clustering(xf, r, channel)
     # Clustering results
     if r == 1
         XLSX.addsheet!(xf)
-        sheet = xf[i + 1]
+        sheet = xf[end]
         XLSX.rename!(sheet, "Clustering Results $(channel.channelname)")
         sheet["A1"] = "ROI area (μm^2)"
         sheet["B1"] = "Number of clusters"
@@ -123,7 +123,7 @@ function writeresultstables_clustering(xf, r, i, channel)
         sheet["I1"] = "Absolute density in clusters (molecules / μm^2)"
         sheet["J1"] = "Relative density in clusters"
     else
-        sheet = xf[i + 1]
+        sheet = xf[end]
     end
 
     sheet[1 + r, 1] = channel.roiarea
@@ -140,11 +140,10 @@ end
 
 function writeresultstables_clusdoc(xf, r, roichannels, i, channel)
     clusterinfo_rowlength = 5
-    sheetoffset = length(roichannels)
     # Clustering-colocalization results
     if r == 1
         XLSX.addsheet!(xf)
-        sheet = xf[i + 1 + sheetoffset]
+        sheet = xf[end]
         XLSX.rename!(sheet, "Clus-DoC Results $(channel.channelname)")
         sheet["A1"] = "Properties of clusters by type"
         sheet["A2"] = "Noncolocalized"
@@ -154,7 +153,7 @@ function writeresultstables_clusdoc(xf, r, roichannels, i, channel)
         sheet["D3"] = "Circularity"
         sheet["E3"] = "Relative density"
     else
-        sheet = xf[i + 1 + sheetoffset]
+        sheet = xf[end]
     end
 
     k = 1
@@ -190,3 +189,34 @@ function writeresultstables_clusdoc(xf, r, roichannels, i, channel)
     ### will underestimate average density by a lot. I should just stick with the actual area, which I'm doing now.
 end
 
+function writeresultstables_parameters(xf, parameters)
+    # # Clustering results
+    # if r == 1
+    #     XLSX.addsheet!(xf)
+    #     sheet = xf[end]
+    #     XLSX.rename!(sheet, "Parameters $(channel.channelname)")
+    #     sheet["A1"] = "ROI area (μm^2)"
+    #     sheet["A2"] = "Number of clusters"
+    #     sheet["A3"] = "Density of clusters (clusters / μm^2)"
+    #     sheet["A4"] = "Cluster area (nm^2)"
+    #     sheet["E1"] = "Cluster circularity"
+    #     sheet["F1"] = "Number of localizations in ROI"
+    #     sheet["G1"] = "Fraction of localizations in clusters"
+    #     sheet["H1"] = "Number of localizations per cluster"
+    #     sheet["I1"] = "Absolute density in clusters (molecules / μm^2)"
+    #     sheet["J1"] = "Relative density in clusters"
+    # else
+    #     sheet = xf[i + 1]
+    # end
+
+    # sheet[1 + r, 1] = channel.roiarea
+    # sheet[1 + r, 2] = channel.nclusters
+    # sheet[1 + r, 3] = channel.roiclusterdensity
+    # sheet[1 + r, 4] = channel.meanclusterarea
+    # sheet[1 + r, 5] = channel.meanclustercircularity
+    # sheet[1 + r, 6] = channel.nlocalizations
+    # sheet[1 + r, 7] = channel.fraction_clustered
+    # sheet[1 + r, 8] = channel.meanclustersize
+    # sheet[1 + r, 9] = channel.meanclusterabsolutedensity
+    # sheet[1 + r, 10] = channel.meanclusterdensity
+end
