@@ -90,7 +90,7 @@ function clusdoc(inputfiles, rois, localizations, outputfolder, colors = default
             update_callback()
         end
 
-        writeresultstables(results, parameters, joinpath(outputfolder, "$(filename) ClusDoC Results.xlsx"))
+        writeresultstables(results, docparameters, fileclusterparameters, joinpath(outputfolder, "$(filename) ClusDoC Results.xlsx"))
         save(joinpath(outputfolder, "$(filename) raw data.jld2"), "results", results)
         # should save: localization map with ROIs shown
         # should have rois automatically save and load (if possible)

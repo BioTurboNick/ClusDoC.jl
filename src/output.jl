@@ -72,13 +72,13 @@ end
 # XLSX creates a fixable error in the output with NaN values
 replacenan(data) = isnan(data) ? "" : data
 
-function writeresultstables(roiresults::Vector{Vector{ChannelResult}}, parameters, path)
+function writeresultstables(roiresults::Vector{Vector{ChannelResult}}, docparameters, clusterparameters, path)
     XLSX.openxlsx(path, mode = "w") do xf
         writeresultstables_colocalization(xf, roiresults)
         
         for (r, roichannels) ∈ enumerate(roiresults)
             for (i, channel) ∈ enumerate(roichannels)
-                writeresultstables_clustering(xf, r, channel)
+                writeresultstables_clustering(xf, r, i, channel)
             end
         end
         for (r, roichannels) ∈ enumerate(roiresults)
@@ -87,7 +87,7 @@ function writeresultstables(roiresults::Vector{Vector{ChannelResult}}, parameter
             end
         end
 
-        writeresultstables_parameters(xf, parameters)
+        writeresultstables_parameters(xf, docparameters, clusterparameters)
     end
 end
 
@@ -106,11 +106,11 @@ function writeresultstables_colocalization(xf, roiresults)
     end
 end
 
-function writeresultstables_clustering(xf, r, channel)
+function writeresultstables_clustering(xf, r, i, channel)
     # Clustering results
     if r == 1
         XLSX.addsheet!(xf)
-        sheet = xf[end]
+        sheet = xf[i + 1]
         XLSX.rename!(sheet, "Clustering Results $(channel.channelname)")
         sheet["A1"] = "ROI area (μm^2)"
         sheet["B1"] = "Number of clusters"
@@ -123,7 +123,7 @@ function writeresultstables_clustering(xf, r, channel)
         sheet["I1"] = "Absolute density in clusters (molecules / μm^2)"
         sheet["J1"] = "Relative density in clusters"
     else
-        sheet = xf[end]
+        sheet = xf[i + 1]
     end
 
     sheet[1 + r, 1] = channel.roiarea
@@ -140,10 +140,11 @@ end
 
 function writeresultstables_clusdoc(xf, r, roichannels, i, channel)
     clusterinfo_rowlength = 5
+    sheetoffset = length(roichannels)
     # Clustering-colocalization results
     if r == 1
         XLSX.addsheet!(xf)
-        sheet = xf[end]
+        sheet = xf[i + 1 + sheetoffset]
         XLSX.rename!(sheet, "Clus-DoC Results $(channel.channelname)")
         sheet["A1"] = "Properties of clusters by type"
         sheet["A2"] = "Noncolocalized"
@@ -153,7 +154,7 @@ function writeresultstables_clusdoc(xf, r, roichannels, i, channel)
         sheet["D3"] = "Circularity"
         sheet["E3"] = "Relative density"
     else
-        sheet = xf[end]
+        sheet = xf[i + 1 + sheetoffset]
     end
 
     k = 1
@@ -189,7 +190,7 @@ function writeresultstables_clusdoc(xf, r, roichannels, i, channel)
     ### will underestimate average density by a lot. I should just stick with the actual area, which I'm doing now.
 end
 
-function writeresultstables_parameters(xf, parameters)
+function writeresultstables_parameters(xf, docparameters, clusterparameters)
     # # Clustering results
     # if r == 1
     #     XLSX.addsheet!(xf)
