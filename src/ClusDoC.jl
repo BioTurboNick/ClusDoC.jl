@@ -157,6 +157,10 @@ function calculate_colocalized_cluster_data!(cr::Vector{ChannelResult})
         channel.meancoclusterdensity[i] = mean([mean(channel.pointdata.density[c.core_indices]) / (channel.roidensity / 1_000_000) for (i, c) ∈ enumerate(channel.clusterdata.cluster[noncolocalized_indexes])])
     end
     return cr
+
+    ###  In the original, the average density was determined by the rectangular range between min and max point coordinates for the area
+    ### A benefit of that is that if your ROI overshoots, you will end up with the same area regardless. But it also means that non-square ROIs
+    ### will underestimate average density by a lot. I should just stick with the actual area, which I'm doing now.
 end
 
 load_raw_results(path) = load(path)["results"]
