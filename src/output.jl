@@ -31,7 +31,7 @@ function generate_doc_maps(cr::Vector{ChannelResult}, outputpath, filename, i, c
         for k ∈ eachindex(cr)
             k != j || continue
             abovethreshold = cr[j].pointdata.abovethreshold
-            scatter(cr[j].coordinates[1, abovethreshold], cr[j].coordinates[2, abovethreshold], markerz = cr[j].pointdata[abovethreshold, Symbol(:docscore, k)], markersize = 4, markerstrokewidth = 0, seriescolor = :balance, clims = (-1, 1), tickfontsize = 24)
+            scatter(cr[j].coordinates[1, abovethreshold], cr[j].coordinates[2, abovethreshold], markerz = cr[j].pointdata[abovethreshold, Symbol(:docscore, k)], markersize = 4, markerstrokewidth = 0, alpha = 0.5, seriescolor = :balance, clims = (-1, 1), tickfontsize = 24)
             plot!(size=(2048,2048), legend = :none, aspectratio = :equal, axis = false, ticks = false, xlims = (xmin, xmax), ylims = (ymin, ymax))
             path = joinpath(outputpath, "doc maps")
             mkpath(path)
