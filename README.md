@@ -24,10 +24,6 @@ Usage
 9. Optional: Use the Settings button to adjust the DoC and DBSCAN clustering settings.
 10. Start the analysis with the Run button. Progress will be printed in the terminal window.
 
-TODO:
-- Color bar font size, standardize colorbar to -1 to 1
-- 
-
 Output
 ======
    - `roicoordinates.txt` containing the ROI shapes

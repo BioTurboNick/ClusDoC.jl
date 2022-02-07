@@ -158,7 +158,7 @@ function calculate_colocalized_cluster_data!(cr::Vector{ChannelResult})
     end
     return cr
 
-    ###  In the original, the average density was determined by the rectangular range between min and max point coordinates for the area
+    ### In the original, the average density was determined by the rectangular range between min and max point coordinates for the area
     ### A benefit of that is that if your ROI overshoots, you will end up with the same area regardless. But it also means that non-square ROIs
     ### will underestimate average density by a lot. I should just stick with the actual area, which I'm doing now.
 end
