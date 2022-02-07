@@ -60,7 +60,7 @@ function generate_doc_histograms(cr::Vector{ChannelResult}, outputpath, filename
     for j ∈ eachindex(cr)
         for k ∈ eachindex(cr)
             j != k || continue
-            histogram(cr[j].pointdata[!, Symbol(:docscore, k)], fillcolor = colors[j], bins = 100, size = (1024, 256), legend = :none,
+            histogram(cr[j].pointdata[!, Symbol(:docscore, k)], fillcolor = colors[j], bins = 100, xlims = (-1, 1), size = (1024, 256), legend = :none,
                 xlabel = "Degree of Colocalization", ylabel = "Frequency", margin = 6Plots.mm, widen = false)
             path = joinpath(outputpath, "doc histograms")
             mkpath(path)
