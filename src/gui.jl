@@ -313,6 +313,7 @@ function drawroi(ctx, roi, color, close = true)
     p = p1
     Gtk.move_to(ctx, p[1], p[2])
     Gtk.set_source(ctx, color)
+    Gtk.set_line_width(ctx, 3)
     for i ∈ 2:length(roi)
         p = roi[i]
         Gtk.line_to(ctx, p[1], p[2])
