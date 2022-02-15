@@ -119,14 +119,19 @@ end
 
 function drawplots(_)
     outputfolder[] == "" && return
-    for f ∈ inputfiles[]
-        filename = basename(f)
-        haskey(localizations[], filename) || continue
-        locs = localizations[][filename]
-        generate_whole_localization_map(locs, outputfolder[], filename, colors[])
-        # could probably generate plots, but delay saving until an output folder selected.
+    @idle_add Gtk.start(b["runspinner"])
+    draw_task = Threads.@spawn begin
+        for f ∈ inputfiles[]
+            filename = basename(f)
+            haskey(localizations[], filename) || continue
+            locs = localizations[][filename]
+            generate_whole_localization_map(locs, outputfolder[], filename, colors[])
+            # could probably generate plots, but delay saving until an output folder selected.
+        end
     end
+    wait(draw_task)
     load_image(fileselector[])
+    @idle_add Gtk.stop(b["runspinner"])
 end
 
 function load_image(obs)
@@ -277,9 +282,10 @@ function run_clusdoc(_)
     save_rois(nothing)
     roicount = sum((n = length(get(rois[], basename(filename), [])); n == 0 ? 1 : n) for filename ∈ inputfiles[])
     progress = progressbar(0:roicount; widget = b["statusprogress"]) # won't update live unless user enables more than one thread
-    Gtk.start(b["runspinner"])
-    clusdoc(inputfiles[], rois[], localizations[], outputfolder[], colors[], docparameters[], clusterparameters[], () -> @idle_add progress[] += 1)
-    Gtk.stop(b["runspinner"])
+    @idle_add Gtk.start(b["runspinner"])
+    clusdoc_task = Threads.@spawn clusdoc(inputfiles[], rois[], localizations[], outputfolder[], colors[], docparameters[], clusterparameters[], () -> @idle_add progress[] += 1)
+    wait(clusdoc_task)
+    @idle_add Gtk.stop(b["runspinner"])
     isrunning[] = false
 end
 

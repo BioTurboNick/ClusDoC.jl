@@ -10,6 +10,8 @@ Installation
 4. Type `add https://github.com/BioTurboNick/ClusDoC.jl` and hit enter to install this package
 5. Backspace to return to the main prompt
 
+Note: Highly recommend setting the default number of threads Julia uses to at least 2.
+
 Usage
 =====
 
