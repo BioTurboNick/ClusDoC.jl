@@ -173,6 +173,7 @@ function start_roi_drawing(_)
 end
 
 function delete_roi(_)
+    fileselector[] !== nothing && selectedroi[] !== nothing || return
     deleteat!(rois[][fileselector[]], selectedroi[])
     selectedroi[] = nothing
 end
