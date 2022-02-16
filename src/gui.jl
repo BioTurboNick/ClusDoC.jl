@@ -289,11 +289,6 @@ function run_clusdoc(_)
     isrunning[] = false
 end
 
-#=ISSUES:
-Need to do parameters for each channel
-=#
-
-
 function draw_canvas(c, img, rois, newroi, nextlineposition, selectedroi)
     img !== nothing || return
     copy!(c, img)
@@ -403,5 +398,3 @@ draw(draw_canvas, imgcanvas, selectedimg, rois, polyroibuilder, nextlineposition
 
 on(onmouseclick, imgcanvas.mouse.buttonpress)
 on(onmousemove, imgcanvas.mouse.motion)
-
-# need entry for image dimensions
