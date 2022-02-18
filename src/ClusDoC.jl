@@ -73,15 +73,17 @@ function clusdoc(inputfiles, rois, localizations, outputfolder, colors = default
         if haskey(rois, filename) && !isempty(rois[filename])
             filerois = copy(rois[filename])
         else
-            filerois = [create_whole_image_roi(locs, chnames)]
+            filerois = []
         end
+
+        scalefactor = get_scale_factor(locs)
 
         for (i, roi) ∈ enumerate(filerois)
             println("    ROI $i")
             roi_starttime = time_ns()
             roi = [(x, 1 - y) for (x, y) ∈ roi] # invert y to match localization coordinates - but actually I might need to invert the original image instead
             roilocalizations = get_roi_localizations(locs, chnames, roi)
-            cr = clusdoc(chnames, roilocalizations, abs(PolygonOps.area(roi) * 40960 * 40960), docparameters, fileclusterparameters)
+            cr = clusdoc(chnames, roilocalizations, abs(PolygonOps.area(roi) * scalefactor ^ 2), docparameters, fileclusterparameters)
             push!(results, cr)
             generate_roi_output(cr, outputfolder, filename, i, chnames, colors)
             roi_endtime = time_ns()
@@ -103,18 +105,31 @@ function clusdoc(inputfiles, rois, localizations, outputfolder, colors = default
     println("Done in $elapsed_s s")
 end
 
-function create_whole_image_roi(locs, chnames)
-    coords = reduce(hcat, [extractcoordinates(locs[chname]) for chname ∈ chnames])
-    xmin, xmax = extrema(coords[1, :]) ./ 40960
-    ymin, ymax = extrema(coords[2, :]) ./ 40960
-    return [(xmin, ymin), (xmin, ymax), (xmax, ymax), (xmax, ymin), (xmin, ymin)]
+function get_bounds(locs)
+    xmin, xmax, ymin, ymax = (Inf, -Inf, Inf, -Inf)
+    for (i, chname) ∈ enumerate(sort(collect(keys(locs))))
+        chpoints = extractcoordinates(locs[chname])
+        xmin = min(minimum(chpoints[1, :]), xmin)
+        xmax = max(maximum(chpoints[1, :]), xmax)
+        ymin = min(minimum(chpoints[2, :]), ymin)
+        ymax = max(maximum(chpoints[2, :]), ymax)
+    end
+    return (xmin, xmax), (ymin, ymax)
+end
+
+function get_scale_factor(locs)
+    # scale factor to map the relative line positions and the image coordinates
+    (xmin, xmax), (ymin, ymax) = get_bounds(locs)
+    return max(xmax - xmin, ymax - ymin)
 end
 
 function get_roi_localizations(locs, chnames, roi)
     roilocalizations = Vector{Vector{Localization}}()
+    scalefactor = get_scale_factor(locs)
+
     for chname ∈ chnames
         coords = extractcoordinates(locs[chname])
-        roichlocalizationsmask = inpolygon.(eachcol(coords ./ 40960), Ref(roi)) .!= 0
+        roichlocalizationsmask = inpolygon.(eachcol(coords ./ scalefactor), Ref(roi)) .!= 0
         push!(roilocalizations, locs[chname][roichlocalizationsmask])
     end
     return roilocalizations
@@ -166,3 +181,5 @@ end
 load_raw_results(path) = load(path)["results"]
 
 end # module
+
+#  TODO: scalebar
