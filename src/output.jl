@@ -11,12 +11,26 @@ function generate_whole_localization_map(locs::Dict{String, Vector{Localization}
     Plots.savefig(imagepath)
 end
 
+rect(w, h, x, y) = Shape(x .+ [0, w, w, 0, 0], y .+ [0, 0, h, h, 0])
+
+function add_scalebar!(xmin, xmax, ymin, ymax)
+    baselength = max(xmax - xmin, ymax - ymin)
+    scalebar_height = baselength / 100
+    scalebar_width = round(baselength / 10)
+    scalebar_y = ymin - 1.5 * scalebar_height
+    annotation_y = scalebar_y - 2 * scalebar_height
+    plot!(rect(scalebar_width, scalebar_height, xmin, scalebar_y), c = :black)
+    annotate!([(xmin, annotation_y, text(string(scalebar_width), :left, :bottom, 24))])
+    ylims!(annotation_y, ymax)
+end
+
 function generate_localization_maps(cr::Vector{ChannelResult}, outputpath, filename, i, chnames, colors)
     xmin, xmax = minimum(minimum(c.coordinates[1,:] for c ∈ cr)), maximum(maximum(c.coordinates[1,:] for c ∈ cr))
     ymin, ymax = minimum(minimum(c.coordinates[2,:] for c ∈ cr)), maximum(maximum(c.coordinates[2,:] for c ∈ cr))
     for j ∈ eachindex(cr)
         scatter(cr[j].coordinates[1, :], cr[j].coordinates[2, :], markercolor = colors[j], markersize = 4, alpha = 0.5, markerstrokewidth = 0)
         plot!(size=(2048,2048), legend = :none, aspectratio = :equal, axis = false, ticks = false, xlims = (xmin, xmax), ylims = (ymin, ymax))
+        add_scalebar!(xmin, xmax, ymin, ymax)
         path = joinpath(outputpath, "localization maps")
         mkpath(path)
         imagepath = joinpath(path, filename * " region $i " * chnames[j] * ".png")
@@ -33,6 +47,7 @@ function generate_doc_maps(cr::Vector{ChannelResult}, outputpath, filename, i, c
             abovethreshold = cr[j].pointdata.abovethreshold
             scatter(cr[j].coordinates[1, abovethreshold], cr[j].coordinates[2, abovethreshold], markerz = cr[j].pointdata[abovethreshold, Symbol(:docscore, k)], markersize = 4, markerstrokewidth = 0, alpha = 0.5, seriescolor = :balance, clims = (-1, 1), tickfontsize = 24)
             plot!(size=(2048,2048), margin = 7Plots.mm, legend = :none, aspectratio = :equal, axis = false, ticks = false, xlims = (xmin, xmax), ylims = (ymin, ymax))
+            add_scalebar!(xmin, xmax, ymin, ymax)
             path = joinpath(outputpath, "doc maps")
             mkpath(path)
             imagepath = joinpath(path, filename * " region $i " * chnames[j] * " to " * chnames[k] * ".png")
@@ -48,6 +63,7 @@ function generate_cluster_maps(cr::Vector{ChannelResult}, outputpath, filename, 
         scatter(cr[j].coordinates[1, :], cr[j].coordinates[2, :], color = :gray, markersize = 4, alpha = 0.1)
         plot!(size=(2048,2048), legend = :none, aspectratio = :equal, axis = false, ticks = false, xlims = (xmin, xmax), ylims = (ymin, ymax))
         [plot!(ai, lw = 5, linecolor = colors[j]) for ai in cr[j].clusterdata.contour]
+        add_scalebar!(xmin, xmax, ymin, ymax)
         path = joinpath(outputpath, "cluster maps")
         mkpath(path)
         imagepath = joinpath(path, filename * " region $i " * chnames[j] * ".png")
