@@ -13,7 +13,7 @@ mutable struct ChannelResult
     meanclusterabsolutedensity::Float64
     meanclusterdensity::Float64
     pointdata::Union{Nothing, DataFrame}
-    clusterdata::Union{Nothing, DataFrame}
+    clusterdata::Union{Nothing, DataFrame} # ["cluster", "size", "area", "circularity", "contour", "ninteracting"]
 
     # cocluster summary data. Entry where index is the same as this channel contains noncolocalized clusters
     meancoclustersize::Vector{Float64}

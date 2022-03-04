@@ -90,6 +90,7 @@ function clusdoc(inputfiles, rois, localizations, outputfolder, colors = default
             roi_elapsed_s = (roi_endtime - roi_starttime) / 1_000_000_000
             println("         finished in $roi_elapsed_s s")
             update_callback()
+            calculate_pooled_cluster_statistics(cr)
         end
 
         writeresultstables(results, docparameters, fileclusterparameters, joinpath(outputfolder, "$(filename) ClusDoC Results.xlsx"))
@@ -152,7 +153,7 @@ function calculate_colocalized_cluster_data!(cr::Vector{ChannelResult})
         all_colocalized_indexes = []
         for (j, channel2) ∈ enumerate(cr)
             i == j && continue
-            colocalized_indexes = findall([count(channel2.pointdata[!, Symbol(:docscore, j)][c.core_indices] .> 0.4) ≥ minclusterpoints for c ∈ channel2.clusterdata.cluster])
+            colocalized_indexes = findall([c.ninteracting[j] ≥ minclusterpoints for c ∈ eachrow(channel2.clusterdata)])
             union!(all_colocalized_indexes, colocalized_indexes)
             channel.ncoclusters[j] = length(colocalized_indexes)
             length(colocalized_indexes) > 0 || continue
@@ -177,6 +178,35 @@ function calculate_colocalized_cluster_data!(cr::Vector{ChannelResult})
     ### A benefit of that is that if your ROI overshoots, you will end up with the same area regardless. But it also means that non-square ROIs
     ### will underestimate average density by a lot. I should just stick with the actual area, which I'm doing now.
 end
+
+function calculate_pooled_cluster_statistics(cr::Vector{ChannelResult})
+    # Calculate statistics on clusters under the assumption that clusters can be pooled between paired channels
+
+    for (i, channel) ∈ enumerate(cr)
+        for (j, channel2) ∈ enumerate(cr)
+            no_interaction = filter(x -> x.ninteracting[j] == 0, channel.clusterdata)
+            low_interaction = filter(x -> 0 < x.ninteracting[j] ≤ 5, channel.clusterdata)
+            high_interaction = filter(x -> x.ninteracting[j] > 5, channel.clusterdata)
+
+            for clustertype ∈ (no_interaction, low_interaction, high_interaction)
+                allclusters = []
+                for cluster ∈ eachrow(clustertype)
+                    incluster = inpolygon.(eachcol(channel2.coordinates), Ref(cluster.contour)) .!= 0
+                    inclustercount = count(incluster)
+                    points = (1:size(channel2.coordinates, 2))[incluster]
+                    inclusterdocscores = channel2.pointdata[points, Symbol(:docscore, j)]
+                    inclusterinteractingcount = count(>(0.4), inclusterdocscores)
+
+                    push!(allclusters, (; cluster, points, inclustercount, inclusterinteractingcount))
+                end
+                println(clustertype)
+                println(allclusters)
+                println()
+            end
+        end
+    end
+end
+
 
 load_raw_results(path) = load(path)["results"]
 
