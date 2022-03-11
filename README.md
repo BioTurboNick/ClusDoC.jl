@@ -36,3 +36,10 @@ Output
    - `doc histograms` contains frequency distributions of the DoC scores for the localizations in each ROI.
    - `doc maps` contains images of localizations for each ROI and channel showing the DoC scores by color.
    - `localization maps` contains images of localizations for each ROI and channel.
+
+*NOTE*: There are some mild variations in calculations between this version and the MATLAB version. For example, the MATLAB version would use a square ROI area, rather than the real polygon area.
+
+Troubleshooting
+================
+   - If you encounter an error, you may need to restart the Julia session.
+   

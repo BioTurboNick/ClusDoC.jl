@@ -156,7 +156,7 @@ function writeresultstables_clustering(xf, r, i, channel)
 end
 
 function writeresultstables_clusdoc(xf, r, roichannels, i, channel)
-    clusterinfo_rowlength = 5
+    clusterinfo_rowlength = 6
     sheetoffset = length(roichannels)
     # Clustering-colocalization results
     if r == 1
@@ -185,6 +185,7 @@ function writeresultstables_clusdoc(xf, r, roichannels, i, channel)
             sheet[3, offset + 2] = "Area (nm^2)"
             sheet[3, offset + 3] = "Circularity"
             sheet[3, offset + 4] = "Relative density"
+            sheet[3, offset + 5] = "Fraction of $(channel.channelname) interacting inside clusters"
         end
 
         sheet[3 + r, offset] = channel.ncoclusters[j]
@@ -192,6 +193,7 @@ function writeresultstables_clusdoc(xf, r, roichannels, i, channel)
         sheet[3 + r, offset + 2] = replacenan(channel.meancoclusterarea[j])
         sheet[3 + r, offset + 3] = replacenan(channel.meancoclustercircularity[j])
         sheet[3 + r, offset + 4] = replacenan(channel.meancoclusterdensity[j])
+        sheet[3 + r, offset + 5] = replacenan(channel.fraction_interactions_clustered[j])
         
         k += 1
     end

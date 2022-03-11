@@ -25,7 +25,7 @@ include("smooth.jl")
 include("output.jl")
 
 const defaultdocparameters = DoCParameters(20, 500, 10)
-const defaultclusterparameters = ClusterParameters(20, 3, true, 15)
+const defaultclusterparameters = ClusterParameters(20, 3, true, 15, 10)
 
 """
     clusdoc()
@@ -46,7 +46,7 @@ function clusdoc(channelnames, localizations, roiarea, docparameters::DoCParamet
     cr = doc(channelnames, localizations, docparameters.localradius, docparameters.radiusmax, docparameters.radiusstep, roiarea)
     dbscan!(cr, clusterparameters, docparameters.localradius)
     smooth!(cr, clusterparameters)
-    calculate_colocalized_cluster_data!(cr)
+    calculate_colocalized_cluster_data!(cr, clusterparameters)
     return cr
 end
 
@@ -146,31 +146,41 @@ end
 const colocalized_threshold = 0.4
 const minclusterpoints = 10 # clusters with fewer points than this are ignored, and clusers must have at least this many colocalized points to be considered colocalized
 
-function calculate_colocalized_cluster_data!(cr::Vector{ChannelResult})
+function calculate_colocalized_cluster_data!(cr::Vector{ChannelResult}, clusterparameters)
     for (i, channel) ∈ enumerate(cr)
-        channel.fraction_colocalized = [count(channel.pointdata[!, Symbol(:docscore, j)] .> colocalized_threshold) / length(channel.pointdata[!, Symbol(:docscore, j)]) for j ∈ eachindex(cr)]
-
         all_colocalized_indexes = []
+        clusterdata_abovecutoff = filter(x -> x.cluster.size > clusterparameters[i].pointscutoff, channel.clusterdata)
         for (j, channel2) ∈ enumerate(cr)
             i == j && continue
-            colocalized_indexes = findall([c.ninteracting[j] ≥ minclusterpoints for c ∈ eachrow(channel2.clusterdata)])
+            clusterdata2_abovecutoff = filter(x -> x.cluster.size > clusterparameters[j].pointscutoff, channel2.clusterdata)
+            colocalized_indexes = findall([c.ninteracting[j] ≥ minclusterpoints for c ∈ eachrow(clusterdata2_abovecutoff)])
             union!(all_colocalized_indexes, colocalized_indexes)
             channel.ncoclusters[j] = length(colocalized_indexes)
             length(colocalized_indexes) > 0 || continue
 
-            channel.meancoclustersize[j] = mean(channel2.clusterdata.size[colocalized_indexes])
-            channel.meancoclusterarea[j] = mean(channel2.clusterdata.area[colocalized_indexes])
-            channel.meancoclustercircularity[j] = mean(channel2.clusterdata.circularity[colocalized_indexes])
-            channel.meancoclusterdensity[j] = mean([mean(channel2.pointdata.density[c.core_indices]) / (channel2.roidensity / 1_000_000) for (i, c) ∈ enumerate(channel2.clusterdata.cluster[colocalized_indexes])])
+            channel.meancoclustersize[j] = mean(clusterdata2_abovecutoff.size[colocalized_indexes])
+            channel.meancoclusterarea[j] = mean(clusterdata2_abovecutoff.area[colocalized_indexes])
+            channel.meancoclustercircularity[j] = mean(clusterdata2_abovecutoff.circularity[colocalized_indexes])
+            channel.meancoclusterdensity[j] = mean([mean(channel2.pointdata.density[c.core_indices]) / (channel2.roidensity / 1_000_000) for (i, c) ∈ enumerate(clusterdata2_abovecutoff.cluster[colocalized_indexes])])
+
+            incluster = falses(channel2.nlocalizations)
+            for cluster ∈ eachrow(clusterdata_abovecutoff)
+                incluster .|= inpolygon.(eachcol(channel2.coordinates), Ref(cluster.contour)) .!= 0
+            end
+            docscoresj = channel.pointdata[!, Symbol(:docscore, j)]
+            channel.fraction_colocalized[j] = count(docscoresj .> colocalized_threshold) / count(channel.pointdata.abovethreshold)
+
+            docscoresi = channel2.pointdata[!, Symbol(:docscore, i)]
+            channel.fraction_interactions_clustered[j] = count(>(colocalized_threshold), docscoresi[incluster]) / count(>(colocalized_threshold), docscoresi)
         end
 
-        noncolocalized_indexes = setdiff!(findall([length(c.core_indices) ≥ minclusterpoints for c ∈ channel.clusterdata.cluster]), all_colocalized_indexes)
+        noncolocalized_indexes = setdiff!(findall([length(c.core_indices) ≥ minclusterpoints for c ∈ clusterdata_abovecutoff.cluster]), all_colocalized_indexes)
         channel.ncoclusters[i] = length(noncolocalized_indexes)
-        length(all_colocalized_indexes) < length(channel.clusterdata.cluster) || continue
-        channel.meancoclustersize[i] = mean(channel.clusterdata.size[noncolocalized_indexes])
-        channel.meancoclusterarea[i] = mean(channel.clusterdata.area[noncolocalized_indexes])
-        channel.meancoclustercircularity[i] = mean(channel.clusterdata.circularity[noncolocalized_indexes])
-        channel.meancoclusterdensity[i] = mean([mean(channel.pointdata.density[c.core_indices]) / (channel.roidensity / 1_000_000) for (i, c) ∈ enumerate(channel.clusterdata.cluster[noncolocalized_indexes])])
+        length(all_colocalized_indexes) < length(clusterdata_abovecutoff.cluster) || continue
+        channel.meancoclustersize[i] = mean(clusterdata_abovecutoff.size[noncolocalized_indexes])
+        channel.meancoclusterarea[i] = mean(clusterdata_abovecutoff.area[noncolocalized_indexes])
+        channel.meancoclustercircularity[i] = mean(clusterdata_abovecutoff.circularity[noncolocalized_indexes])
+        channel.meancoclusterdensity[i] = mean([mean(channel.pointdata.density[c.core_indices]) / (channel.roidensity / 1_000_000) for (i, c) ∈ enumerate(clusterdata_abovecutoff.cluster[noncolocalized_indexes])])
     end
     return cr
 
@@ -188,21 +198,21 @@ function calculate_pooled_cluster_statistics(cr::Vector{ChannelResult})
             low_interaction = filter(x -> 0 < x.ninteracting[j] ≤ 5, channel.clusterdata)
             high_interaction = filter(x -> x.ninteracting[j] > 5, channel.clusterdata)
 
-            for clustertype ∈ (no_interaction, low_interaction, high_interaction)
+            for clustertype ∈ (no_interaction, low_interaction, high_interaction, channel.clusterdata)
                 allclusters = []
                 for cluster ∈ eachrow(clustertype)
                     incluster = inpolygon.(eachcol(channel2.coordinates), Ref(cluster.contour)) .!= 0
                     inclustercount = count(incluster)
                     points = (1:size(channel2.coordinates, 2))[incluster]
-                    inclusterdocscores = channel2.pointdata[points, Symbol(:docscore, j)]
-                    inclusterinteractingcount = count(>(0.4), inclusterdocscores)
 
-                    push!(allclusters, (; cluster, points, inclustercount, inclusterinteractingcount))
+                    push!(allclusters, (; cluster, points, inclustercount))
                 end
-                println(clustertype)
-                println(allclusters)
-                println()
+                if length(allclusters) > 0
+                    println("$(length(allclusters)), $(mean(x -> x.cluster.area, allclusters)), $(mean(x -> x.cluster.size, allclusters)), \
+                        $(mean(x -> x.inclustercount, allclusters))")
+                end
             end
+            
         end
     end
 end
@@ -212,4 +222,4 @@ load_raw_results(path) = load(path)["results"]
 
 end # module
 
-#  TODO: scalebar
+#  TODO: New parameter in UI, Check cocluster results
