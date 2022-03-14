@@ -625,6 +625,28 @@
                         <property name="top_attach">2</property>
                       </packing>
                     </child>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label" translatable="yes">Colocalized DoC Limit</property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">0</property>
+                        <property name="top_attach">3</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkEntry" id="colocalizedthreshinput">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="input_purpose">number</property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">1</property>
+                        <property name="top_attach">3</property>
+                      </packing>
+                    </child>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -764,6 +786,28 @@
                         <property name="top_attach">2</property>
                       </packing>
                     </child>
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="label" translatable="yes">Min Points/Cluster</property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">0</property>
+                        <property name="top_attach">4</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkEntry" id="minclusterpointsinput">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="input_purpose">number</property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">1</property>
+                        <property name="top_attach">4</property>
+                      </packing>
+                    </child>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -788,7 +832,7 @@
                   <object class="GtkLabel">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">DBSCAN Clustering Ch 2</property>
+                    <property name="label" translatable="yes">Ch 2</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -803,57 +847,13 @@
                     <property name="row_spacing">5</property>
                     <property name="column_spacing">5</property>
                     <child>
-                      <object class="GtkLabel">
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="label" translatable="yes">Epsilon</property>
-                      </object>
-                      <packing>
-                        <property name="left_attach">0</property>
-                        <property name="top_attach">0</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkLabel">
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="label" translatable="yes">Min Points</property>
-                      </object>
-                      <packing>
-                        <property name="left_attach">0</property>
-                        <property name="top_attach">1</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkLabel">
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="label" translatable="yes">Use Threshold</property>
-                      </object>
-                      <packing>
-                        <property name="left_attach">0</property>
-                        <property name="top_attach">2</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkLabel">
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="label" translatable="yes">Smoothing Radius (nm)</property>
-                      </object>
-                      <packing>
-                        <property name="left_attach">0</property>
-                        <property name="top_attach">3</property>
-                      </packing>
-                    </child>
-                    <child>
                       <object class="GtkEntry" id="epsiloninput1">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="input_purpose">number</property>
                       </object>
                       <packing>
-                        <property name="left_attach">1</property>
+                        <property name="left_attach">0</property>
                         <property name="top_attach">0</property>
                       </packing>
                     </child>
@@ -864,7 +864,7 @@
                         <property name="input_purpose">digits</property>
                       </object>
                       <packing>
-                        <property name="left_attach">1</property>
+                        <property name="left_attach">0</property>
                         <property name="top_attach">1</property>
                       </packing>
                     </child>
@@ -875,7 +875,7 @@
                         <property name="input_purpose">number</property>
                       </object>
                       <packing>
-                        <property name="left_attach">1</property>
+                        <property name="left_attach">0</property>
                         <property name="top_attach">3</property>
                       </packing>
                     </child>
@@ -888,8 +888,19 @@
                         <property name="draw_indicator">True</property>
                       </object>
                       <packing>
-                        <property name="left_attach">1</property>
+                        <property name="left_attach">0</property>
                         <property name="top_attach">2</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkEntry" id="minclusterpointsinput1">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="input_purpose">number</property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">0</property>
+                        <property name="top_attach">4</property>
                       </packing>
                     </child>
                   </object>
@@ -916,7 +927,7 @@
                   <object class="GtkLabel">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">DBSCAN Clustering Ch 3</property>
+                    <property name="label" translatable="yes">Ch 3</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -931,57 +942,13 @@
                     <property name="row_spacing">5</property>
                     <property name="column_spacing">5</property>
                     <child>
-                      <object class="GtkLabel">
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="label" translatable="yes">Epsilon</property>
-                      </object>
-                      <packing>
-                        <property name="left_attach">0</property>
-                        <property name="top_attach">0</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkLabel">
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="label" translatable="yes">Min Points</property>
-                      </object>
-                      <packing>
-                        <property name="left_attach">0</property>
-                        <property name="top_attach">1</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkLabel">
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="label" translatable="yes">Use Threshold</property>
-                      </object>
-                      <packing>
-                        <property name="left_attach">0</property>
-                        <property name="top_attach">2</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkLabel">
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="label" translatable="yes">Smoothing Radius (nm)</property>
-                      </object>
-                      <packing>
-                        <property name="left_attach">0</property>
-                        <property name="top_attach">3</property>
-                      </packing>
-                    </child>
-                    <child>
                       <object class="GtkEntry" id="epsiloninput2">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="input_purpose">number</property>
                       </object>
                       <packing>
-                        <property name="left_attach">1</property>
+                        <property name="left_attach">0</property>
                         <property name="top_attach">0</property>
                       </packing>
                     </child>
@@ -992,7 +959,7 @@
                         <property name="input_purpose">digits</property>
                       </object>
                       <packing>
-                        <property name="left_attach">1</property>
+                        <property name="left_attach">0</property>
                         <property name="top_attach">1</property>
                       </packing>
                     </child>
@@ -1003,7 +970,7 @@
                         <property name="input_purpose">number</property>
                       </object>
                       <packing>
-                        <property name="left_attach">1</property>
+                        <property name="left_attach">0</property>
                         <property name="top_attach">3</property>
                       </packing>
                     </child>
@@ -1016,8 +983,19 @@
                         <property name="draw_indicator">True</property>
                       </object>
                       <packing>
-                        <property name="left_attach">1</property>
+                        <property name="left_attach">0</property>
                         <property name="top_attach">2</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkEntry" id="minclusterpointsinput2">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="input_purpose">number</property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">0</property>
+                        <property name="top_attach">4</property>
                       </packing>
                     </child>
                   </object>
