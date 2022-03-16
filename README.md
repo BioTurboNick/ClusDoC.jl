@@ -37,9 +37,9 @@ Output
    - `doc maps` contains images of localizations for each ROI and channel showing the DoC scores by color.
    - `localization maps` contains images of localizations for each ROI and channel.
 
-*NOTE*: There are some mild variations in calculations between this version and the MATLAB version. For example, the MATLAB version would use a square ROI area, rather than the real polygon area.
+*NOTE*: There are some variations in calculations between this version and the MATLAB version. For example, the MATLAB version would use a square ROI area, rather than the computed polygon area. For a more impactful example, the MATLAB version used a separate number of points per cluster cutoff when reporting DBSCAN cluster
+results, but not when reporting the colocalized/noncolocalized cluster subsets. In this version, both apply the cutoff for consistency.
 
 Troubleshooting
 ================
    - If you encounter an error, you may need to restart the Julia session.
-   

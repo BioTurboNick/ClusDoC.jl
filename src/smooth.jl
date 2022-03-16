@@ -36,11 +36,16 @@ function smooth!(cr::Vector{ChannelResult}, clusterparameters)
             cc.clusterdata.circularity[ii] = calculate_circularity(contourarea, contour)
         end
 
-        clusterdata_abovecutoff = filter(x -> x.cluster.size > clusterparameters[i].pointscutoff, cc.clusterdata)
-        cc.meanclusterarea = mean(clusterdata_abovecutoff.area)
-        cc.meanclustercircularity = mean(clusterdata_abovecutoff.circularity)
-        cc.meanclusterabsolutedensity = mean(clusterdata_abovecutoff.size ./ (clusterdata_abovecutoff.area ./ 1_000_000))
-        cc.meanclusterdensity = mean([mean(cc.pointdata.density[cluster.core_indices]) / (cc.roidensity / 1_000_000) for (i, cluster) ∈ enumerate(clusterdata_abovecutoff.cluster)])
+        cc.meanclusterarea = mean(cc.clusterdata.area)
+        cc.meanclustercircularity = mean(cc.clusterdata.circularity)
+        cc.meanclusterabsolutedensity = mean(cc.clusterdata.size ./ (cc.clusterdata.area ./ 1_000_000))
+        cc.meanclusterdensity = mean([mean(cc.pointdata.density[cluster.core_indices]) / (cc.roidensity / 1_000_000) for (i, cluster) ∈ enumerate(cc.clusterdata.cluster)])
+
+        clusterdata_abovecutoff = filter(x -> x.cluster.size > clusterparameters[i].minsigclusterpoints, cc.clusterdata)
+        cc.meansigclusterarea = mean(clusterdata_abovecutoff.area)
+        cc.meansigclustercircularity = mean(clusterdata_abovecutoff.circularity)
+        cc.meansigclusterabsolutedensity = mean(clusterdata_abovecutoff.size ./ (clusterdata_abovecutoff.area ./ 1_000_000))
+        cc.meansigclusterdensity = mean([mean(cc.pointdata.density[cluster.core_indices]) / (cc.roidensity / 1_000_000) for (i, cluster) ∈ enumerate(clusterdata_abovecutoff.cluster)])
     end
 end
 

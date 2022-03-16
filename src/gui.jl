@@ -42,18 +42,22 @@ ch3colorbtn = colorbutton(defaultcolors[3]; widget = b["ch3colorbutton"])
 localradiustxt = textbox(defaultdocparameters.localradius; widget = b["localradiusinput"], gtksignal = "focus-out-event")
 radiusmaxtxt = textbox(defaultdocparameters.radiusmax; widget = b["radiusmaxinput"], gtksignal = "focus-out-event")
 radiussteptxt = textbox(defaultdocparameters.radiusstep; widget = b["radiusstepinput"], gtksignal = "focus-out-event")
+colocthreshtxt = textbox(defaultdocparameters.colocalized_threshold; widget = b["colocalizedthreshinput"], gtksignal = "focus-out-event")
 epsilontxt1 = textbox(defaultclusterparameters.epsilon; widget = b["epsiloninput"], gtksignal = "focus-out-event")
 minpointstxt1 = textbox(defaultclusterparameters.minpoints; widget = b["minpointsinput"], gtksignal = "focus-out-event")
 usethreshholdcheckbox1 = checkbox(defaultclusterparameters.uselocalradius_threshold, widget = b["usethresholdinput"])
 smoothingradiustxt1 = textbox(defaultclusterparameters.smoothingradius; widget = b["smoothingradiusinput"], gtksignal = "focus-out-event")
+minsigclusterpointstxt1 = textbox(defaultclusterparameters.minsigclusterpoints; widget = b["minsigclusterpointsinput"], gtksignal = "focus-out-event")
 epsilontxt2 = textbox(defaultclusterparameters.epsilon; widget = b["epsiloninput1"], gtksignal = "focus-out-event")
 minpointstxt2 = textbox(defaultclusterparameters.minpoints; widget = b["minpointsinput1"], gtksignal = "focus-out-event")
 usethreshholdcheckbox2 = checkbox(defaultclusterparameters.uselocalradius_threshold, widget = b["usethresholdinput1"])
 smoothingradiustxt2 = textbox(defaultclusterparameters.smoothingradius; widget = b["smoothingradiusinput1"], gtksignal = "focus-out-event")
+minsigclusterpointstxt2 = textbox(defaultclusterparameters.minsigclusterpoints; widget = b["minsigclusterpointsinput1"], gtksignal = "focus-out-event")
 epsilontxt3 = textbox(defaultclusterparameters.epsilon; widget = b["epsiloninput2"], gtksignal = "focus-out-event")
 minpointstxt3 = textbox(defaultclusterparameters.minpoints; widget = b["minpointsinput2"], gtksignal = "focus-out-event")
 usethreshholdcheckbox3 = checkbox(defaultclusterparameters.uselocalradius_threshold, widget = b["usethresholdinput2"])
 smoothingradiustxt3 = textbox(defaultclusterparameters.smoothingradius; widget = b["smoothingradiusinput2"], gtksignal = "focus-out-event")
+minsigclusterpointstxt3 = textbox(defaultclusterparameters.minsigclusterpoints; widget = b["minsigclusterpointsinput2"], gtksignal = "focus-out-event")
 settingsok = button(widget = b["settingsok"])
 settingsreset = button(widget = b["settingsreset"])
 
@@ -87,7 +91,7 @@ end
 function set_outputfolder(_)
     path = pick_folder()
     if path != ""
-        outputpath = joinpath(path, "ClusDoC Results")
+        outputpath = joinpath(path, "Clus-DoC Results")
         mkpath(outputpath)
         outputfolder[] = outputpath
     end
@@ -237,10 +241,10 @@ end
 
 function save_settings(_)
     try
-        docparameters[] = DoCParameters(localradiustxt[], radiusmaxtxt[], radiussteptxt[])
-        clusterparameters[] = [ClusterParameters(epsilontxt1[], minpointstxt1[], usethreshholdcheckbox1[], smoothingradiustxt1[]),
-                               ClusterParameters(epsilontxt2[], minpointstxt2[], usethreshholdcheckbox2[], smoothingradiustxt2[]),
-                               ClusterParameters(epsilontxt3[], minpointstxt3[], usethreshholdcheckbox3[], smoothingradiustxt3[])]
+        docparameters[] = DoCParameters(localradiustxt[], radiusmaxtxt[], radiussteptxt[], colocthreshtxt[])
+        clusterparameters[] = [ClusterParameters(epsilontxt1[], minpointstxt1[], usethreshholdcheckbox1[], smoothingradiustxt1[], minsigclusterpointstxt1[]),
+                               ClusterParameters(epsilontxt2[], minpointstxt2[], usethreshholdcheckbox2[], smoothingradiustxt2[], minsigclusterpointstxt2[]),
+                               ClusterParameters(epsilontxt3[], minpointstxt3[], usethreshholdcheckbox3[], smoothingradiustxt3[], minsigclusterpointstxt3[])]
         Gtk.hide(b["settingsdialog"])
     catch
         cancel_settings(nothing)
@@ -257,18 +261,22 @@ function cancel_settings(_)
     localradiustxt[] = docparameters[].localradius
     radiusmaxtxt[] = docparameters[].radiusmax
     radiussteptxt[] = docparameters[].radiusstep
+    colocthreshtxt[] = docparameters[].colocalized_threshold
     epsilontxt1[] = clusterparameters[][1].epsilon
     minpointstxt1[] = clusterparameters[][1].minpoints
     usethreshholdcheckbox1[] = clusterparameters[][1].uselocalradius_threshold
     smoothingradiustxt1[] = clusterparameters[][1].smoothingradius
+    minsigclusterpointstxt1[] = clusterparameters[][1].minsigclusterpoints
     epsilontxt2[] = clusterparameters[][2].epsilon
     minpointstxt2[] = clusterparameters[][2].minpoints
     usethreshholdcheckbox2[] = clusterparameters[][2].uselocalradius_threshold
     smoothingradiustxt2[] = clusterparameters[][2].smoothingradius
+    minsigclusterpointstxt2[] = clusterparameters[][2].minsigclusterpoints
     epsilontxt3[] = clusterparameters[][3].epsilon
     minpointstxt3[] = clusterparameters[][3].minpoints
     usethreshholdcheckbox3[] = clusterparameters[][3].uselocalradius_threshold
     smoothingradiustxt3[] = clusterparameters[][3].smoothingradius
+    minsigclusterpointstxt3[] = clusterparameters[][3].minsigclusterpoints
 end
 
 function on_settingsdialog_delete(d, _)

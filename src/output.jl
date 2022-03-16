@@ -134,11 +134,19 @@ function writeresultstables_clustering(xf, r, i, channel)
         sheet["C1"] = "Density of clusters (clusters / μm^2)"
         sheet["D1"] = "Cluster area (nm^2)"
         sheet["E1"] = "Cluster circularity"
-        sheet["F1"] = "Number of localizations in ROI"
-        sheet["G1"] = "Fraction of localizations in clusters"
-        sheet["H1"] = "Number of localizations per cluster"
-        sheet["I1"] = "Absolute density in clusters (molecules / μm^2)"
-        sheet["J1"] = "Relative density in clusters"
+        sheet["F1"] = "Number of significant clusters"
+        sheet["G1"] = "Density of significant clusters (clusters / μm^2)"
+        sheet["H1"] = "Significant cluster area (nm^2)"
+        sheet["I1"] = "Significant cluster circularity"
+        sheet["J1"] = "Number of localizations in ROI"
+        sheet["K1"] = "Fraction of localizations in clusters"
+        sheet["L1"] = "Number of localizations per cluster"
+        sheet["M1"] = "Absolute density in clusters (molecules / μm^2)"
+        sheet["N1"] = "Relative density in clusters"
+        sheet["O1"] = "Fraction of localizations in significant clusters"
+        sheet["P1"] = "Number of localizations per significant cluster"
+        sheet["Q1"] = "Absolute density in significant clusters (molecules / μm^2)"
+        sheet["R1"] = "Relative density in significant clusters"
     else
         sheet = xf[i + 1]
     end
@@ -148,11 +156,19 @@ function writeresultstables_clustering(xf, r, i, channel)
     sheet[1 + r, 3] = channel.roiclusterdensity
     sheet[1 + r, 4] = channel.meanclusterarea
     sheet[1 + r, 5] = channel.meanclustercircularity
-    sheet[1 + r, 6] = channel.nlocalizations
-    sheet[1 + r, 7] = channel.fraction_clustered
-    sheet[1 + r, 8] = channel.meanclustersize
-    sheet[1 + r, 9] = channel.meanclusterabsolutedensity
-    sheet[1 + r, 10] = channel.meanclusterdensity
+    sheet[1 + r, 6] = channel.nsigclusters
+    sheet[1 + r, 7] = channel.roisigclusterdensity
+    sheet[1 + r, 8] = channel.meansigclusterarea
+    sheet[1 + r, 9] = channel.meansigclustercircularity
+    sheet[1 + r, 10] = channel.nlocalizations
+    sheet[1 + r, 11] = channel.fraction_clustered
+    sheet[1 + r, 12] = channel.meanclustersize
+    sheet[1 + r, 13] = channel.meanclusterabsolutedensity
+    sheet[1 + r, 14] = channel.meanclusterdensity
+    sheet[1 + r, 15] = channel.fraction_sig_clustered
+    sheet[1 + r, 16] = channel.meansigclustersize
+    sheet[1 + r, 17] = channel.meansigclusterabsolutedensity
+    sheet[1 + r, 18] = channel.meansigclusterdensity
 end
 
 function writeresultstables_clusdoc(xf, r, roichannels, i, channel)
@@ -163,7 +179,7 @@ function writeresultstables_clusdoc(xf, r, roichannels, i, channel)
         XLSX.addsheet!(xf)
         sheet = xf[i + 1 + sheetoffset]
         XLSX.rename!(sheet, "Clus-DoC Results $(channel.channelname)")
-        sheet["A1"] = "Properties of clusters by type"
+        sheet["A1"] = "Properties of significant clusters by type"
         sheet["A2"] = "Noncolocalized"
         sheet["A3"] = "Number of clusters"
         sheet["B3"] = "Number of localizations per cluster"
@@ -212,10 +228,12 @@ function writeresultstables_parameters(xf, chnames, docparameters, clusterparame
     sheet["A2"] = "Local radius (nm)"
     sheet["B2"] = "Radius max (nm)"
     sheet["C2"] = "Radius step (nm)"
+    sheet["D2"] = "Colocalized DoC threshold"
 
     sheet["A3"] = docparameters.localradius
     sheet["B3"] = docparameters.radiusmax
     sheet["C3"] = docparameters.radiusstep
+    sheet["D3"] = docparameters.colocalized_threshold
 
     sheet["A5"] = "Clustering parameters"
     sheet["A6"] = "Channel"
@@ -223,6 +241,7 @@ function writeresultstables_parameters(xf, chnames, docparameters, clusterparame
     sheet["C6"] = "Min points"
     sheet["D6"] = "Use local radius threshold"
     sheet["E6"] = "Smoothing radius (nm)"
+    sheet["F6"] = "Min significant cluster points"
 
     for (i, c) ∈ enumerate(clusterparameters)
         i > length(chnames) && break
@@ -231,5 +250,6 @@ function writeresultstables_parameters(xf, chnames, docparameters, clusterparame
         sheet[6 + i, 3] = c.minpoints
         sheet[6 + i, 4] = c.uselocalradius_threshold
         sheet[6 + i, 5] = c.smoothingradius
+        sheet[6 + i, 6] = c.minsigclusterpoints
     end
 end

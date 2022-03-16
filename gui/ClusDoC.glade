@@ -790,7 +790,7 @@
                       <object class="GtkLabel">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="label" translatable="yes">Min Points/Cluster</property>
+                        <property name="label" translatable="yes">Min Points/Sig. Cluster</property>
                       </object>
                       <packing>
                         <property name="left_attach">0</property>
@@ -798,7 +798,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkEntry" id="minclusterpointsinput">
+                      <object class="GtkEntry" id="minsigclusterpointsinput">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="input_purpose">number</property>
@@ -893,7 +893,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkEntry" id="minclusterpointsinput1">
+                      <object class="GtkEntry" id="minsigclusterpointsinput1">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="input_purpose">number</property>
@@ -988,7 +988,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkEntry" id="minclusterpointsinput2">
+                      <object class="GtkEntry" id="minsigclusterpointsinput2">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="input_purpose">number</property>
