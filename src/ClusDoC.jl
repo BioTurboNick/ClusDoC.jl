@@ -23,22 +23,18 @@ include("doc.jl")
 include("dbscan.jl")
 include("smooth.jl")
 include("output.jl")
+include("gui.jl")
 
 const defaultdocparameters = DoCParameters(20, 500, 10, 0.4)
 const defaultclusterparameters = ClusterParameters(20, 3, true, 15, 10)
 
 """
-    clusdoc()
-
-Open the ClusDoC GUI
-
     clusdoc(channelnames, localizations, roiarea)
 
 Run ClusDoC on a single set of localizations.
 
     clusdoc(inputfiles, rois, localizations, outputfolder, update_callback)
 """
-clusdoc() = (Base.include(ClusDoC, "gui.jl"); nothing)
 
 # profiling - 2300 frame in nearest neighbors `inrange`, 3000 frames in `imfilter`, 200 spent in `rankcorr` (out of 6000)
 # should check out rankcorr, it's the one I haven't tried to optimize at all - checked and it's about minimal
