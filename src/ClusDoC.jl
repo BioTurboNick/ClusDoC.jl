@@ -38,7 +38,7 @@ Run ClusDoC on a single set of localizations.
 
     clusdoc(inputfiles, rois, localizations, outputfolder, update_callback)
 """
-clusdoc() = (include("gui.jl"); nothing)
+clusdoc() = (Base.include(ClusDoC, "gui.jl"); nothing)
 
 # profiling - 2300 frame in nearest neighbors `inrange`, 3000 frames in `imfilter`, 200 spent in `rankcorr` (out of 6000)
 # should check out rankcorr, it's the one I haven't tried to optimize at all - checked and it's about minimal
