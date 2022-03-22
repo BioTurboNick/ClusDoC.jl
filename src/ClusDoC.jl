@@ -150,6 +150,7 @@ end
 function calculate_colocalization_data!(cr::Vector{ChannelResult}, docparameters, clusterparameters)
     for (i, channel) ∈ enumerate(cr)
         all_colocalized_indexes = []
+        channel.clusterdata !== nothing || continue
         clusterdata_abovecutoff = filter(x -> x.cluster.size > clusterparameters[i].minsigclusterpoints, channel.clusterdata)
         for (j, channel2) ∈ enumerate(cr)
             i == j && continue

@@ -62,6 +62,7 @@ function generate_cluster_maps(cr::Vector{ChannelResult}, outputpath, filename, 
     for j ∈ eachindex(cr)
         scatter(cr[j].coordinates[1, :], cr[j].coordinates[2, :], color = :gray, markersize = 4, alpha = 0.1)
         plot!(size=(2048,2048), legend = :none, aspectratio = :equal, axis = false, ticks = false, xlims = (xmin, xmax), ylims = (ymin, ymax))
+        cr[j].clusterdata !== nothing || continue
         [plot!(ai, lw = 5, linecolor = colors[j]) for ai in cr[j].clusterdata.contour]
         add_scalebar!(xmin, xmax, ymin, ymax)
         path = joinpath(outputpath, "cluster maps")

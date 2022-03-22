@@ -10,6 +10,7 @@ function dbscan!(channels::Vector{ChannelResult}, clusterparameters, localradius
             c.pointdata.abovethreshold = equivalentradii .> localradius # maybe can replace with simple number threshold though, if don't need to compare across channels
         end
         coordinates = clusterparameters[i].uselocalradius_threshold ? c.coordinates[:, c.pointdata.abovethreshold] : c.coordinates
+        length(coordinates) > 0 || continue
         clusters = Clustering.dbscan(coordinates, clusterparameters[i].epsilon, min_cluster_size = clusterparameters[i].minpoints)
         abovethreshold = map(x -> x.size > clusterparameters[i].minsigclusterpoints, clusters)
         ninteracting = [[count(c.pointdata[!, Symbol(:docscore, j)][cluster.core_indices] .> 0.4) for j ∈ eachindex(channels)] for cluster ∈ clusters]
@@ -22,7 +23,7 @@ function dbscan!(channels::Vector{ChannelResult}, clusterparameters, localradius
         clusters_abovethreshold = filter(x -> x.size > clusterparameters[i].minsigclusterpoints, clusters)
         c.nsigclusters = length(clusters_abovethreshold)
         c.roisigclusterdensity = c.nsigclusters / c.roiarea
-        c.meansigclustersize = mean(c.size for c ∈ clusters_abovethreshold)
-        c.fraction_sig_clustered = sum(c.size for c ∈ clusters_abovethreshold) / c.nlocalizations
+        c.meansigclustersize = length(clusters_abovethreshold) == 0 ? NaN : mean(c.size for c ∈ clusters_abovethreshold)
+        c.fraction_sig_clustered = length(clusters_abovethreshold) == 0 ? 0 : sum(c.size for c ∈ clusters_abovethreshold) / c.nlocalizations
     end
 end

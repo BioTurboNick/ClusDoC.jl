@@ -1,15 +1,5 @@
 using GeometryBasics: Point
 
-# channel1pointsX = [28739.6, 29635, 28894.8, 29151.3, 28824.9, 29491.4, 29129.6, 29131.9, 28574.5, 29492.4, 29132.5,
-#                        28580.6, 28561.3, 28577.5, 28739.6, 29633.5, 29131.6]
-# channel1pointsY = [37181.4, 37849.4, 37446.7, 37957, 37026.1, 37287.2, 37786.3, 37959, 37558.8, 37309.7, 37771.8,
-#                     37555, 37571.5, 37568.2, 37194.2, 37851.2, 37761]
-# coordinates = repeat(permutedims([channel1pointsX channel1pointsY]), inner = (1, 1000))
-
-# channels = Vector(undef, 2)
-# channels[1] = ChannelResult("test1", coordinates, nothing, nothing, nothing, nothing, nothing)
-# channels[2] = ChannelResult("test2", coordinates, nothing, nothing, nothing, nothing, nothing)
-
 """
     doc(channels::Vector{Channel}, localradius, radiusmax, radiusstep, roiarea)
 
@@ -25,7 +15,14 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
     0 < radiusstep < radiusmax ||
         throw(ArgumentError("$(:radiusstep) must be positive and less than $(:radiusmax); got $radiuistep, $radiusmax"))
 
-    channels = ChannelResult.(channelnames, extractcoordinates.(localizations), length.(localizations), roiarea / 1_000_000,
+    coordinates = map(localizations) do l
+        if length(l) == 0
+            fill(0.0, 3, 1) # downstream fails if there isn't at least one point.
+        else
+            extractcoordinates(l)
+        end
+    end
+    channels = ChannelResult.(channelnames, coordinates, length.(localizations), roiarea / 1_000_000,
         length.(localizations) ./ (roiarea / 1_000_000), length(channelnames))
     #=
     The algorithm for coordinate-based colocalization (doi: 10.1007/s00418-011-0880-5) is:
@@ -66,6 +63,7 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
         # original sets any NaNs to 0. I'm setting them to -1 because "nothing anywhere nearby" is as anticorrelated as it can get.
         docscores = Vector(undef, length(channels))
         for j ∈ eachindex(channels)
+            length(channels[j].coordinates) > 0 || continue
             docscore = fill(NaN, length(abovethreshold))
             spearmancoefficient = [corspearman(distributions[i][k, :], distributions[j][k, :]) for k ∈ 1:count(abovethreshold)]
             _, nearestdistance = nn(ctrees[j], c.coordinates[:, abovethreshold])

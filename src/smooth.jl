@@ -2,8 +2,9 @@ function smooth!(cr::Vector{ChannelResult}, clusterparameters)
     for (i, cc) ∈ enumerate(cr)
         sigmas = clusterparameters[i].smoothingradius
         cccoordinates = @view cc.coordinates[:, cc.pointdata.abovethreshold]
+        cc.clusterdata !== nothing || continue
         clustercoordinates = [@view cccoordinates[:, union(cluster.core_indices, cluster.boundary_indices)] for cluster ∈ cc.clusterdata.cluster]
-        is2d = any((@view clustercoordinates[3, :]) .!= 0)
+        is2d = !any(size(clustercoordinates, 1) == 3 && (@view clustercoordinates[3, :]) .!= 0)
         if is2d
             clustercoordinates = [@view cluster[1:2, :] for cluster ∈ clustercoordinates]
         end
@@ -45,7 +46,8 @@ function smooth!(cr::Vector{ChannelResult}, clusterparameters)
         cc.meansigclusterarea = mean(clusterdata_abovecutoff.area)
         cc.meansigclustercircularity = mean(clusterdata_abovecutoff.circularity)
         cc.meansigclusterabsolutedensity = mean(clusterdata_abovecutoff.size ./ (clusterdata_abovecutoff.area ./ 1_000_000))
-        cc.meansigclusterdensity = mean([mean(cc.pointdata.density[cluster.core_indices]) / (cc.roidensity / 1_000_000) for (i, cluster) ∈ enumerate(clusterdata_abovecutoff.cluster)])
+        cc.meansigclusterdensity = length(clusterdata_abovecutoff.cluster) == 0 ? NaN : 
+            mean([mean(cc.pointdata.density[cluster.core_indices]) / (cc.roidensity / 1_000_000) for (i, cluster) ∈ enumerate(clusterdata_abovecutoff.cluster)])
     end
 end
 
