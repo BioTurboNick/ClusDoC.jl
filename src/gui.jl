@@ -14,7 +14,7 @@ clusterparameters = Observable{Vector{ClusterParameters}}(fill(defaultclusterpar
 isrunning = Observable(false)
 
 # initialize UI elements
-b = Gtk.GtkBuilder(filename=joinpath(@__DIR__, "../gui/clusdoc.glade"))
+b = Gtk.GtkBuilder(filename=gladepath)
 imgcanvas = canvas(UserUnit, 500, 500)
 push!(b["canvasbox"], imgcanvas)
 win = b["mainwin"]
