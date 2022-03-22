@@ -23,10 +23,12 @@ include("doc.jl")
 include("dbscan.jl")
 include("smooth.jl")
 include("output.jl")
-include("gui.jl")
 
 const defaultdocparameters = DoCParameters(20, 500, 10, 0.4)
 const defaultclusterparameters = ClusterParameters(20, 3, true, 15, 10)
+
+include("gui.jl")
+
 
 """
     clusdoc(channelnames, localizations, roiarea)
