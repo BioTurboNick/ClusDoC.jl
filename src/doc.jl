@@ -46,7 +46,7 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
     radiussteps = (1:ceil(radiusmax / radiusstep)) .* radiusstep
     for (i, c) ∈ enumerate(channels)
         # determine which localizations have more neighbors than expected by chance
-        nneighbors = inrangecount(allneighbortree, c.coordinates, localradius)
+        nneighbors = count_inrange(allneighbortree, c.coordinates, localradius)
         ntotal = size(allcoordinates, 2) - 1 # remove self
         equivalentradii = equivalentradius.(nneighbors .- 1, ntotal, roiarea * 1_000_000)
         abovethreshold = equivalentradii .> localradius # maybe can replace with simple number threshold though, if don't need to compare across channels
@@ -55,7 +55,7 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
         distributions = Vector(undef, length(channels))
         for j ∈ eachindex(channels)
             k = Int(i == j) # factor to remove self
-            dr = [(NearestNeighbors.inrangecount(ctrees[j], (@view c.coordinates[:, abovethreshold]), r) .- k) ./ r ^ 2 for r ∈ radiussteps]
+            dr = [(NearestNeighbors.count_inrange(ctrees[j], (@view c.coordinates[:, abovethreshold]), r) .- k) ./ r ^ 2 for r ∈ radiussteps]
             distributions[j] = hcat((drx ./ dr[end] for drx ∈ dr)...)
         end
 

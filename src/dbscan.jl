@@ -5,7 +5,7 @@ function dbscan!(channels::Vector{ChannelResult}, clusterparameters, localradius
         if clusterparameters[i].uselocalradius_threshold && isnothing(c.pointdata.abovethreshold)
             allcoordinates = reduce(hcat, c.coordinates for c ∈ channels)
             allneighbortree = BallTree(allcoordinates)
-            nneighbors = inrangecount(allneighbortree, c.coordinates, localradius, true)
+            nneighbors = count_inrange(allneighbortree, c.coordinates, localradius, true)
             equivalentradii = equivalentradius.(nneighbors, ntotal, roiarea)
             c.pointdata.abovethreshold = equivalentradii .> localradius # maybe can replace with simple number threshold though, if don't need to compare across channels
         end
