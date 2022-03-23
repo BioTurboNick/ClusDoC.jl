@@ -16,14 +16,15 @@ Usage
 =====
 
 1. Open Julia terminal
-2. Type `using ClusDoC` and hit enter to load this package and the GUI.
-3. Click "Input Files" to select one or more localization list text files to load (currently supported: Nikon Elements output)
-4. Click "Output Folder" to choose the folder that the `ClusDoC Results` output folder will be created in.
-5. Once both Input Files and Output Folder are selected, images are generated.
-6. Optional: Use the controls to add one or more ROIs by clicking to add a point and double-clicking to complete the polygon. Click inside an ROI to select it for deletion. ROIs may be saved in a text file to the chosen output directory or loaded from elsewhere. ROIs are keyed to the image file names.
-7. Optional: Change the colors for each channel using the color controls. Each change will regenerate the images.
-8. Optional: Use the Settings button to adjust the DoC and DBSCAN clustering settings.
-9. Start the analysis with the Run button. Progress will be printed in the terminal window.
+2. Type `using ClusDoC` and hit enter to load this package
+3. Type `clusdoc()` and hit enter to load the GUI
+4. Click "Input Files" to select one or more localization list text files to load (currently supported: Nikon Elements output)
+5. Click "Output Folder" to choose the folder that the `ClusDoC Results` output folder will be created in.
+6. Once both Input Files and Output Folder are selected, images are generated.
+7. Optional: Use the controls to add one or more ROIs by clicking to add a point and double-clicking to complete the polygon. Click inside an ROI to select it for deletion. ROIs may be saved in a text file to the chosen output directory or loaded from elsewhere. ROIs are keyed to the image file names.
+8. Optional: Change the colors for each channel using the color controls. Each change will regenerate the images.
+9. Optional: Use the Settings button to adjust the DoC and DBSCAN clustering settings.
+10. Start the analysis with the Run button. Progress will be printed in the terminal window.
 
 Output
 ======
