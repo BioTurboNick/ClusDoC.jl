@@ -21,9 +21,9 @@ win = b["mainwin"]
 Gtk.showall(win)
 
 inputbtn = button(widget = b["inputbtn"])
-inputtxt = textbox(String; widget = b["inputtxt"])
+inputtxt = textbox(String; widget = b["inputtxt"], gtksignal = "focus-out-event")
 outputbtn = button(widget = b["outputbtn"])
-textbox(String; widget = b["outputtxt"], observable = outputfolder)
+textbox(String; widget = b["outputtxt"], observable = outputfolder, gtksignal = "focus-out-event")
 fileselector = dropdown([], widget = b["fileselector"])
 addroibtn = button(widget = b["roiadd"])
 deleteroibtn = button(widget = b["roidelete"])
