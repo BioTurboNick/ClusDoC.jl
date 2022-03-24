@@ -5,3 +5,5 @@ deps/deps.jl
 Manifest.toml
 output/
 .vscode/settings.json
+
+*.glade~
