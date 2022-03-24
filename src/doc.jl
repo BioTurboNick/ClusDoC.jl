@@ -68,7 +68,7 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
             spearmancoefficient = [corspearman(distributions[i][k, :], distributions[j][k, :]) for k ∈ 1:count(abovethreshold)]
             _, nearestdistance = nn(ctrees[j], c.coordinates[:, abovethreshold])
             docscore[abovethreshold] = spearmancoefficient .* exp.(-nearestdistance ./ radiussteps[end])
-            docscore[abovethreshold][isnan.(docscore[abovethreshold])] .= -1
+            docscore[abovethreshold .& isnan.(docscore)] .= -1
             docscores[j] = docscore
         end
 
