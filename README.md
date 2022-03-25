@@ -43,4 +43,4 @@ results, but not when reporting the colocalized/noncolocalized cluster subsets. 
 Troubleshooting
 ================
    - If you encounter an error, you may need to restart the Julia session.
-   - There is currently an issue on some Mac computers where the file selection dialog is broken. Instead, you could collect a list of file paths separated by quotation marks and spaces and paste it into the box. E.g. `"/path/to/file1.txt" "/path/to/file2.txt"`
+   - There is currently an issue on some Mac computers where the file selection dialog is broken. As a workaround, you could collect a list of file paths separated by quotation marks and spaces and paste it into the box. E.g. `"/path/to/file1.txt" "/path/to/file2.txt"` Alternatively, you can directly provide an array of filenames to the observable tracking them as follows: `ClusDoC.inputfiles[] = ["/path/to/file1.txt", "/path/to/file2.txt"]`
