@@ -27,7 +27,7 @@ const sourcedir = @__DIR__
 
 const defaultdocparameters = DoCParameters(20, 500, 10, 0.4)
 const defaultclusterparameters = ClusterParameters(20, 3, true, 15, 10)
-const gladepath = joinpath(sourcedir, "../gui/clusdoc.glade")
+const gladepath = joinpath(sourcedir, "../gui/ClusDoC.glade")
 
 
 """
