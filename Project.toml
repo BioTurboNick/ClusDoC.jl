@@ -1,7 +1,7 @@
 name = "ClusDoC"
 uuid = "fcf67ee7-cf45-447c-8b3e-411d14b5161b"
 authors = ["Nicholas Bauer <nicholasbauer@outlook.com>"]
-version = "0.1.1"
+version = "0.2.0"
 
 [deps]
 Clustering = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
