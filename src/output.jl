@@ -173,7 +173,7 @@ function writeresultstables_clustering(xf, r, i, channel)
 end
 
 function writeresultstables_clusdoc(xf, r, roichannels, i, channel)
-    clusterinfo_rowlength = 6
+    clusterinfo_rowlength = 12
     sheetoffset = length(roichannels)
     # Clustering-colocalization results
     if r == 1
@@ -196,13 +196,21 @@ function writeresultstables_clusdoc(xf, r, roichannels, i, channel)
         i == j && continue
         offset = clusterinfo_rowlength * k + 1
         if r == 1
-            sheet[2, offset] = "Colocalized with $(channel2.channelname)"
+            sheet[2, offset] = "Colocalization with $(channel2.channelname)"
             sheet[3, offset] = "Number of clusters"
             sheet[3, offset + 1] = "Number of localizations per cluster"
             sheet[3, offset + 2] = "Area (nm^2)"
             sheet[3, offset + 3] = "Circularity"
             sheet[3, offset + 4] = "Relative density"
             sheet[3, offset + 5] = "Fraction of $(channel.channelname) interacting inside clusters"
+
+            sheet[2, offset + 6] = "Intermediate colocalization with $(channel2.channelname)"
+            sheet[3, offset + 6] = "Number of clusters"
+            sheet[3, offset + 7] = "Number of localizations per cluster"
+            sheet[3, offset + 8] = "Area (nm^2)"
+            sheet[3, offset + 9] = "Circularity"
+            sheet[3, offset + 10] = "Relative density"
+            sheet[3, offset + 11] = "Fraction of $(channel.channelname) interacting inside clusters"
         end
 
         sheet[3 + r, offset] = channel.ncoclusters[j]
@@ -211,6 +219,13 @@ function writeresultstables_clusdoc(xf, r, roichannels, i, channel)
         sheet[3 + r, offset + 3] = replacenan(channel.meancoclustercircularity[j])
         sheet[3 + r, offset + 4] = replacenan(channel.meancoclusterdensity[j])
         sheet[3 + r, offset + 5] = replacenan(channel.fraction_interactions_clustered[j])
+
+        sheet[3 + r, offset + 6] = channel.ncoclusters_int[j]
+        sheet[3 + r, offset + 7] = replacenan(channel.meancoclustersize_int[j])
+        sheet[3 + r, offset + 8] = replacenan(channel.meancoclusterarea_int[j])
+        sheet[3 + r, offset + 9] = replacenan(channel.meancoclustercircularity_int[j])
+        sheet[3 + r, offset + 10] = replacenan(channel.meancoclusterdensity_int[j])
+        sheet[3 + r, offset + 11] = replacenan(channel.fraction_interactions_clustered_int[j])
         
         k += 1
     end
@@ -224,7 +239,7 @@ end
 
 function writeresultstables_parameters(xf, chnames, docparameters, clusterparameters)
     sheet = XLSX.addsheet!(xf)
-    XLSX.rename!(sheet, "Algorithm prameters")
+    XLSX.rename!(sheet, "Algorithm parameters")
     sheet["A1"] = "DoC parameters"
     sheet["A2"] = "Local radius (nm)"
     sheet["B2"] = "Radius max (nm)"
