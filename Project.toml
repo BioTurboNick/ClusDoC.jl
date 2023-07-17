@@ -29,5 +29,6 @@ XLSX = "fdbf4ff8-1666-58a4-91e7-1b58723a45e0"
 
 [compat]
 Gtk = "1.2"
+Observables = "0.3"
 GtkObservables = "1.2"
 NearestNeighbors = "0.4.10"
