@@ -117,8 +117,8 @@ function load_data(obs)
         end
     end
     empty!(rois[])
-    notify!(localizations)
-    notify!(rois)
+    notify(localizations)
+    notify(rois)
 end
 
 function drawplots(_)
@@ -349,9 +349,9 @@ function onmouseclick(btn)
                 polyroibuilder[] = []
                 activedrawing[] = false
                 nextlineposition[] = nothing
-                notify!(rois)
+                notify(rois)
             else
-                notify!(polyroibuilder)
+                notify(polyroibuilder)
             end
         end
     else

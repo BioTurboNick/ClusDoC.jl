@@ -1,7 +1,7 @@
 name = "ClusDoC"
 uuid = "fcf67ee7-cf45-447c-8b3e-411d14b5161b"
 authors = ["Nicholas Bauer <nicholasbauer@outlook.com>"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 Clustering = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
@@ -29,6 +29,5 @@ XLSX = "fdbf4ff8-1666-58a4-91e7-1b58723a45e0"
 
 [compat]
 Gtk = "1.2"
-Observables = "0.3"
-GtkObservables = "1.2"
+GtkObservables = "1.2.5"
 NearestNeighbors = "0.4.10"
