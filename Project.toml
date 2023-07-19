@@ -28,6 +28,7 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 XLSX = "fdbf4ff8-1666-58a4-91e7-1b58723a45e0"
 
 [compat]
+Clustering = "0.14"
 Gtk = "1.2"
 GtkObservables = "1.2.5"
 NearestNeighbors = "0.4.10"
