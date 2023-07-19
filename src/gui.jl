@@ -152,8 +152,12 @@ function load_image(obs)
         chnames = sort(unique(keys(localizations[][fileselector[]])))
         ch1label[] = chnames[1]
         visible(b["ch1box"], true)
-        ch2label[] = chnames[2]
-        visible(b["ch2box"], true)
+        if length(chnames) > 1
+            ch2label[] = chnames[2]
+            visible(b["ch2box"], true)
+        else
+            visible(b["ch2box"], false)
+        end
         if length(chnames) > 2
             ch3label[] = chnames[3]
             visible(b["ch3box"], true)
