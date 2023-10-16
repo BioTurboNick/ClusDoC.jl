@@ -22,6 +22,8 @@ function smooth!(cr::Vector{ChannelResult}, clusterparameters)
 
         cc.clusterdata.area = Vector{Float64}(undef, length(boxes))
         cc.clusterdata.circularity = Vector{Float64}(undef, length(boxes))
+        cc.clusterdata.absolutedensity = Vector{Float64}(undef, length(boxes))
+        cc.clusterdata.density = Vector{Float64}(undef, length(boxes))
         cc.clusterdata.contour = Vector{Any}(undef, length(boxes))
         for (ii, box) ∈ enumerate(boxes)
             coords1 = clustercoordinates[ii]
@@ -33,14 +35,16 @@ function smooth!(cr::Vector{ChannelResult}, clusterparameters)
 
             contour, contourarea = find_contour(clusimage, box, intensities)
             cc.clusterdata.area[ii] = contourarea
-            cc.clusterdata.contour[ii] = contour
             cc.clusterdata.circularity[ii] = calculate_circularity(contourarea, contour)
+            cc.clusterdata.absolutedensity[ii] = cc.clusterdata.size[ii] / (cc.clusterdata.area[ii] / 1_000_000)
+            cc.clusterdata.density[ii] = mean(cc.pointdata.density[cc.clusterdata.cluster[ii].core_indices]) / (cc.roidensity / 1_000_000)
+            cc.clusterdata.contour[ii] = contour
         end
-
+        
         cc.meanclusterarea = mean(cc.clusterdata.area)
         cc.meanclustercircularity = mean(cc.clusterdata.circularity)
-        cc.meanclusterabsolutedensity = mean(cc.clusterdata.size ./ (cc.clusterdata.area ./ 1_000_000))
-        cc.meanclusterdensity = mean([mean(cc.pointdata.density[cluster.core_indices]) / (cc.roidensity / 1_000_000) for (i, cluster) ∈ enumerate(cc.clusterdata.cluster)])
+        cc.meanclusterabsolutedensity = mean(cc.clusterdata.absolutedensity)
+        cc.meanclusterdensity = mean(cc.clusterdata.density)
 
         clusterdata_abovecutoff = filter(x -> x.cluster.size > clusterparameters[i].minsigclusterpoints, cc.clusterdata)
         cc.meansigclusterarea = mean(clusterdata_abovecutoff.area)

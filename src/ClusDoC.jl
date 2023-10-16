@@ -163,6 +163,27 @@ function calculate_colocalization_data!(cr::Vector{ChannelResult}, docparameters
         channel.clusterdata !== nothing || continue
         clusterdata_abovecutoff = filter(x -> x.cluster.size > clusterparameters[i].minsigclusterpoints, channel.clusterdata)
 
+        # all clusters
+        for (j, channel2) ∈ enumerate(cr)
+            # count members of each cluster
+            ch2countcolumn = Symbol("$(channel2.channelname)count")
+            ch2memberscolumn = Symbol("$(channel2.channelname)members")
+            channel.clusterdata[!, ch2countcolumn] = Vector{Int}(undef, channel.nclusters)
+            channel.clusterdata[!, ch2memberscolumn] = Vector{Vector{Int}}(undef, channel.nclusters)
+            for (ii, cluster) ∈ enumerate(eachrow(channel.clusterdata))
+                inmembers = inpolygon.(eachcol(channel2.coordinates), Ref(cluster.contour)) .!= 0
+                members = findall(inmembers)
+                channel.clusterdata[ii, ch2memberscolumn] = members
+                channel.clusterdata[ii, ch2countcolumn] = length(members)
+            end
+
+            ch2absolutedensitycolumn = Symbol("$(channel2.channelname)absolutedensity")
+            channel.clusterdata[!, ch2absolutedensitycolumn] = channel2.clusterdata[!, ch2countcolumn] ./ (channel.clusterdata.area ./ 1_000_000)
+
+            ch2relativedensitycolumn = Symbol("$(channel2.channelname)density")
+            channel.clusterdata[!, ch2relativedensitycolumn] = [mean(channel2.pointdata.density[channel.clusterdata[i, ch2memberscolumn]]) / (channel.roidensity / 1_000_000) for i ∈ eachindex(eachrow(channel.clusterdata))]
+        end
+
         # coclusters
         for (j, channel2) ∈ enumerate(cr)
             i == j && continue
@@ -177,7 +198,7 @@ function calculate_colocalization_data!(cr::Vector{ChannelResult}, docparameters
             channel.meancoclustersize[j] = mean(clusterdata_abovecutoff.size[colocalized_indexes])
             channel.meancoclusterarea[j] = mean(clusterdata_abovecutoff.area[colocalized_indexes])
             channel.meancoclustercircularity[j] = mean(clusterdata_abovecutoff.circularity[colocalized_indexes])
-            channel.meancoclusterdensity[j] = mean([mean(channel.pointdata.density[c.core_indices]) / (channel.roidensity / 1_000_000) for (i, c) ∈ enumerate(clusterdata_abovecutoff.cluster[colocalized_indexes])])
+            channel.meancoclusterdensity[j] = mean(clusterdata_abovecutoff.density[colocalized_indexes])
 
             incluster = falses(channel2.nlocalizations)
             for cluster ∈ eachrow(clusterdata_abovecutoff[colocalized_indexes, :])
@@ -200,7 +221,7 @@ function calculate_colocalization_data!(cr::Vector{ChannelResult}, docparameters
             channel.meancoclustersize_int[j] = mean(clusterdata_abovecutoff.size[colocalized_indexes])
             channel.meancoclusterarea_int[j] = mean(clusterdata_abovecutoff.area[colocalized_indexes])
             channel.meancoclustercircularity_int[j] = mean(clusterdata_abovecutoff.circularity[colocalized_indexes])
-            channel.meancoclusterdensity_int[j] = mean([mean(channel.pointdata.density[c.core_indices]) / (channel.roidensity / 1_000_000) for (i, c) ∈ enumerate(clusterdata_abovecutoff.cluster[colocalized_indexes])])
+            channel.meancoclusterdensity_int[j] = mean(clusterdata_abovecutoff.density[colocalized_indexes])
 
             incluster = falses(channel2.nlocalizations)
             for cluster ∈ eachrow(clusterdata_abovecutoff[colocalized_indexes, :])
@@ -218,7 +239,7 @@ function calculate_colocalization_data!(cr::Vector{ChannelResult}, docparameters
         channel.meancoclustersize[i] = mean(clusterdata_abovecutoff.size[noncolocalized_indexes])
         channel.meancoclusterarea[i] = mean(clusterdata_abovecutoff.area[noncolocalized_indexes])
         channel.meancoclustercircularity[i] = mean(clusterdata_abovecutoff.circularity[noncolocalized_indexes])
-        channel.meancoclusterdensity[i] = mean([mean(channel.pointdata.density[c.core_indices]) / (channel.roidensity / 1_000_000) for (i, c) ∈ enumerate(clusterdata_abovecutoff.cluster[noncolocalized_indexes])])
+        channel.meancoclusterdensity[i] = mean(clusterdata_abovecutoff.density[noncolocalized_indexes])
     end
     return cr
 

@@ -5,7 +5,11 @@ function dbscan!(channels::Vector{ChannelResult}, clusterparameters, localradius
         clusters = Clustering.dbscan(coordinates, clusterparameters[i].epsilon, min_cluster_size = clusterparameters[i].minpoints)
         abovethreshold = map(x -> x.size > clusterparameters[i].minsigclusterpoints, clusters)
         ninteracting = [[count(c.pointdata[!, Symbol(:docscore, j)][cluster.core_indices] .> 0.4) for j ∈ eachindex(channels)] for cluster ∈ clusters]
-        c.clusterdata = DataFrame(:cluster => clusters, :size => [cluster.size for cluster ∈ clusters], :ninteracting => ninteracting, :abovethreshold => abovethreshold)
+        c.clusterdata = DataFrame(
+            :cluster => clusters,
+            :size => [cluster.size for cluster ∈ clusters],
+            :ninteracting => ninteracting,
+            :abovethreshold => abovethreshold)
         c.nclusters = length(clusters)
         c.roiclusterdensity = c.nclusters / c.roiarea
         c.meanclustersize = mean(c.clusterdata.size)
