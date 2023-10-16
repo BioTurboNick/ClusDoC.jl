@@ -2,6 +2,7 @@ module ClusDoC
 
 using Clustering
 using Contour
+using CSV
 using DataFrames
 using ImageFiltering
 using Interpolations
@@ -27,6 +28,7 @@ const sourcedir = @__DIR__
 
 const defaultdocparameters = DoCParameters(20, 500, 10, 0.4)
 const defaultclusterparameters = ClusterParameters(20, 3, true, 15, 10)
+const defaultoutputcsvclusters = false;
 const gladepath = joinpath(sourcedir, "../gui/ClusDoC.glade")
 
 
@@ -53,7 +55,7 @@ function clusdoc(channelnames, localizations, roiarea, docparameters::DoCParamet
     return cr
 end
 
-function clusdoc(inputfiles, rois, localizations, outputfolder, colors = defaultcolors, docparameters = defaultdocparameters, clusterparameters = nothing, update_callback = () -> nothing)
+function clusdoc(inputfiles, rois, localizations, outputfolder, colors = defaultcolors, docparameters = defaultdocparameters, clusterparameters = nothing, output_clusters_to_csv = false, update_callback = () -> nothing)
     isempty(rois) && return
     println("Starting ClusDoC")
 
@@ -92,6 +94,11 @@ function clusdoc(inputfiles, rois, localizations, outputfolder, colors = default
             roi_endtime = time_ns()
             roi_elapsed_s = (roi_endtime - roi_starttime) / 1_000_000_000
             println("         finished in $roi_elapsed_s s")
+            if output_clusters_to_csv
+                for c ∈ cr
+                    CSV.write(joinpath(outputfolder, "$filename $(c.channelname) cluster data.csv"), c.clusterdata)
+                end
+            end
             update_callback()
         end
 
