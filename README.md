@@ -55,7 +55,7 @@ Data Reference
 =================
 DoC Results: Percentage of colocalized molecules for each channel pair
 Clustering Results X: DBSCAN output for clustering channel X, for all clusters and significant clusters (defined by `Min Points/Sig. Cluster` setting)
-Clus-DoC Results X: Colocalization data for clusters in channel X to each other channel. Colocalized clusters are defined by having at least `Min Points/Sig. Cluster` points with DoC scores exceeding `Colocalized DoC Limit`. Noncolocalized clusters have no colocalization, and Intermediate clusters are those with minimal colocalization (below `Min Points/Sig. Cluster`).
+Clus-DoC Results X: Colocalization data for signficant clusters in channel X to each other channel. Colocalized clusters are defined by having at least `Min Points/Sig. Cluster` points with DoC scores exceeding `Colocalized DoC Limit`. Noncolocalized clusters have no colocalization, and Intermediate clusters are those with minimal colocalization (below `Min Points/Sig. Cluster`).
 Algorithm parameters: Stores the settings used to create the data.
 Columns:
 * ROI area (μm)
