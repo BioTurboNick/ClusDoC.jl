@@ -29,6 +29,7 @@ const sourcedir = @__DIR__
 const defaultdocparameters = DoCParameters(20, 500, 10, 0.4)
 const defaultclusterparameters = ClusterParameters(20, 3, true, 15, 10)
 const defaultoutputcsvclusters = false;
+const defaultclustercombinechannels = false;
 const gladepath = joinpath(sourcedir, "../gui/ClusDoC.glade")
 
 
@@ -47,7 +48,7 @@ clusdoc() = (include(joinpath(sourcedir, "gui.jl")); nothing)
 
 # profiling - 2300 frame in nearest neighbors `inrange`, 3000 frames in `imfilter`, 200 spent in `rankcorr` (out of 6000)
 # should check out rankcorr, it's the one I haven't tried to optimize at all - checked and it's about minimal
-function clusdoc(channelnames, localizations, roiarea, docparameters::DoCParameters, clusterparameters::Vector{ClusterParameters})
+function clusdoc(channelnames, localizations, roiarea, docparameters::DoCParameters, clusterparameters::Vector{ClusterParameters}, combine_channels_for_clustering = false)
     cr = doc(channelnames, localizations, docparameters.localradius, docparameters.radiusmax, docparameters.radiusstep, roiarea)
     dbscan!(cr, clusterparameters, docparameters.localradius)
     smooth!(cr, clusterparameters)
@@ -55,7 +56,7 @@ function clusdoc(channelnames, localizations, roiarea, docparameters::DoCParamet
     return cr
 end
 
-function clusdoc(inputfiles, rois, localizations, outputfolder, colors = defaultcolors, docparameters = defaultdocparameters, clusterparameters = nothing, output_clusters_to_csv = false, update_callback = () -> nothing)
+function clusdoc(inputfiles, rois, localizations, outputfolder, colors = defaultcolors, docparameters = defaultdocparameters, clusterparameters = nothing, output_clusters_to_csv = false, combine_channels_for_clustering = false, update_callback = () -> nothing)
     isempty(rois) && return
     println("Starting ClusDoC")
 
@@ -88,7 +89,7 @@ function clusdoc(inputfiles, rois, localizations, outputfolder, colors = default
             roi_starttime = time_ns()
             roi = [(x, 1 - y) for (x, y) ∈ roi] # invert y to match localization coordinates - but actually I might need to invert the original image instead
             roilocalizations = get_roi_localizations(locs, chnames, roi)
-            cr = clusdoc(chnames, roilocalizations, abs(PolygonOps.area(roi) * scalefactor ^ 2), docparameters, fileclusterparameters)
+            cr = clusdoc(chnames, roilocalizations, abs(PolygonOps.area(roi) * scalefactor ^ 2), docparameters, fileclusterparameters, combine_channels_for_clustering)
             push!(results, cr)
             generate_roi_output(cr, outputfolder, filename, i, chnames, colors)
             roi_endtime = time_ns()
