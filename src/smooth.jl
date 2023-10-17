@@ -1,58 +1,76 @@
-function smooth!(cr::Vector{ChannelResult}, clusterparameters)
-    for (i, cc) ∈ enumerate(cr)
-        sigmas = clusterparameters[i].smoothingradius
-        cccoordinates = @view cc.coordinates[:, cc.pointdata.abovethreshold]
-        cc.clusterdata !== nothing || continue
-        clustercoordinates = [@view cccoordinates[:, union(cluster.core_indices, cluster.boundary_indices)] for cluster ∈ cc.clusterdata.cluster]
-        is2d = !any(size(clustercoordinates, 1) == 3 && (@view clustercoordinates[3, :]) .!= 0)
-        if is2d
-            clustercoordinates = [@view cluster[1:2, :] for cluster ∈ clustercoordinates]
+function smooth!(cr::Vector{ChannelResult}, clusterparameters, combinechannels)
+    if combinechannels
+        combined = ChannelResult(
+            "combinedtemp",
+            hcat([c.coordinates for c ∈ cr]...),
+            sum(c.nlocalizations for c ∈ cr),
+            sum(c.roiarea for c ∈ cr),
+            cr[1].roiarea,
+            0)
+        combined.clusterdata = cr[1].clusterdata
+        combined.pointdata = copy(cr[1].pointdata)
+        for c ∈ cr[2:end]
+            append!(combined.pointdata, c.pointdata)
         end
-        # NOTE: Currently, 3d may result in OOM errors
-        bounds1 =  extrema.(clustercoordinates, dims = 2)
-        lengths = [last.(b) .- first.(b) for b in bounds1]
-        boxsizes = 0.5 .* maximum.(lengths) .+ (clusterparameters[i].epsilon + 10)
-
-        centers = [(last.(b) .+ first.(b)) ./ 2 for b ∈ bounds1]
-        boxmins = [cen .- bs for (cen, bs) ∈ zip(centers, boxsizes)]
-        boxmaxes = [cen .+ bs for (cen, bs) ∈ zip(centers, boxsizes)]
-
-        # create the grid
-        boxes = [UnitRange.(floor.(bmin), ceil.(bmax)) for (bmin, bmax) ∈ zip(boxmins, boxmaxes)]
-
-        cc.clusterdata.area = Vector{Float64}(undef, length(boxes))
-        cc.clusterdata.circularity = Vector{Float64}(undef, length(boxes))
-        cc.clusterdata.absolutedensity = Vector{Float64}(undef, length(boxes))
-        cc.clusterdata.density = Vector{Float64}(undef, length(boxes))
-        cc.clusterdata.contour = Vector{Any}(undef, length(boxes))
-        for (ii, box) ∈ enumerate(boxes)
-            coords1 = clustercoordinates[ii]
-            bincounts = create_histogram(coords1, box)
-            clusimage = convolve_histogram(bincounts, length(box), sigmas)
-            intensities = interpolate_intensities(clusimage, coords1, box)
-
-            # My attempt to keep this dimension-agnostic breaks here; no generic way to do contour/surface? Look into MDBM.jl
-
-            contour, contourarea = find_contour(clusimage, box, intensities)
-            cc.clusterdata.area[ii] = contourarea
-            cc.clusterdata.circularity[ii] = calculate_circularity(contourarea, contour)
-            cc.clusterdata.absolutedensity[ii] = cc.clusterdata.size[ii] / (cc.clusterdata.area[ii] / 1_000_000)
-            cc.clusterdata.density[ii] = mean(cc.pointdata.density[cc.clusterdata.cluster[ii].core_indices]) / (cc.roidensity / 1_000_000)
-            cc.clusterdata.contour[ii] = contour
+        smooth!(combined, clusterparameters[1])
+        for c ∈ cr
+            c.meanclusterarea = combined.meanclusterarea
+            c.meanclustercircularity = combined.meanclustercircularity
+            c.meansigclusterarea = combined.meansigclusterarea
+            c.meansigclustercircularity = combined.meansigclustercircularity
         end
-        
-        cc.meanclusterarea = mean(cc.clusterdata.area)
-        cc.meanclustercircularity = mean(cc.clusterdata.circularity)
-        cc.meanclusterabsolutedensity = mean(cc.clusterdata.absolutedensity)
-        cc.meanclusterdensity = mean(cc.clusterdata.density)
-
-        clusterdata_abovecutoff = filter(x -> x.cluster.size > clusterparameters[i].minsigclusterpoints, cc.clusterdata)
-        cc.meansigclusterarea = mean(clusterdata_abovecutoff.area)
-        cc.meansigclustercircularity = mean(clusterdata_abovecutoff.circularity)
-        cc.meansigclusterabsolutedensity = mean(clusterdata_abovecutoff.size ./ (clusterdata_abovecutoff.area ./ 1_000_000))
-        cc.meansigclusterdensity = length(clusterdata_abovecutoff.cluster) == 0 ? NaN : 
-            mean([mean(cc.pointdata.density[cluster.core_indices]) / (cc.roidensity / 1_000_000) for (i, cluster) ∈ enumerate(clusterdata_abovecutoff.cluster)])
+    else
+        for (i, cc) ∈ enumerate(cr)
+            smooth!(cc, clusterparameters[i])
+        end
     end
+end
+
+function smooth!(channel::ChannelResult, clusterparameters::ClusterParameters)
+    cc = channel
+    sigmas = clusterparameters.smoothingradius
+    cccoordinates = @view cc.coordinates[:, cc.pointdata.abovethreshold]
+    cc.clusterdata !== nothing || return
+    clustercoordinates = [@view cccoordinates[:, union(cluster.core_indices, cluster.boundary_indices)] for cluster ∈ cc.clusterdata.cluster]
+    is2d = !any(size(clustercoordinates, 1) == 3 && (@view clustercoordinates[3, :]) .!= 0)
+    if is2d
+        clustercoordinates = [@view cluster[1:2, :] for cluster ∈ clustercoordinates]
+    end
+    # NOTE: Currently, 3d may result in OOM errors
+    bounds1 = extrema.(clustercoordinates, dims = 2)
+    lengths = [last.(b) .- first.(b) for b in bounds1]
+    boxsizes = 0.5 .* maximum.(lengths) .+ (clusterparameters.epsilon + 10)
+
+    centers = [(last.(b) .+ first.(b)) ./ 2 for b ∈ bounds1]
+    boxmins = [cen .- bs for (cen, bs) ∈ zip(centers, boxsizes)]
+    boxmaxes = [cen .+ bs for (cen, bs) ∈ zip(centers, boxsizes)]
+
+    # create the grid
+    boxes = [UnitRange.(floor.(bmin), ceil.(bmax)) for (bmin, bmax) ∈ zip(boxmins, boxmaxes)]
+
+    cc.clusterdata.area = Vector{Float64}(undef, length(boxes))
+    cc.clusterdata.circularity = Vector{Float64}(undef, length(boxes))
+    cc.clusterdata.contour = Vector{Any}(undef, length(boxes))
+    for (ii, box) ∈ enumerate(boxes)
+        coords1 = clustercoordinates[ii]
+        bincounts = create_histogram(coords1, box)
+        clusimage = convolve_histogram(bincounts, length(box), sigmas)
+        intensities = interpolate_intensities(clusimage, coords1, box)
+
+        # My attempt to keep this dimension-agnostic breaks here; no generic way to do contour/surface? Look into MDBM.jl
+
+        contour, contourarea = find_contour(clusimage, box, intensities)
+        cc.clusterdata.area[ii] = contourarea
+        cc.clusterdata.circularity[ii] = calculate_circularity(contourarea, contour)
+        cc.clusterdata.contour[ii] = contour
+    end
+    
+    cc.meanclusterarea = mean(cc.clusterdata.area)
+    cc.meanclustercircularity = mean(cc.clusterdata.circularity)
+
+    clusterdata_abovecutoff = filter(x -> x.cluster.size > clusterparameters.minsigclusterpoints, cc.clusterdata)
+    cc.meansigclusterarea = mean(clusterdata_abovecutoff.area)
+    cc.meansigclustercircularity = mean(clusterdata_abovecutoff.circularity)
 end
 
 function create_histogram(coords, box)
