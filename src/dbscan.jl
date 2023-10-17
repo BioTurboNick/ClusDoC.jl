@@ -1,4 +1,4 @@
-function dbscan!(channels::Vector{ChannelResult}, clusterparameters, combinechannels)
+function dbscan!(channels::ROIResult, clusterparameters, combinechannels)
     if combinechannels
         combined = ChannelResult(
             "combinedtemp",

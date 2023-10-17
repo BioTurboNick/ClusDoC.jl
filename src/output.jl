@@ -90,13 +90,17 @@ end
 # XLSX creates a fixable error in the output with NaN values
 replacenan(data) = isnan(data) ? "" : data
 
-function writeresultstables(roiresults::Vector{Vector{ChannelResult}}, docparameters, clusterparameters, path)
+function writeresultstables(roiresults::Vector{Vector{ChannelResult}}, docparameters, clusterparameters, path, combine_channels)
     XLSX.openxlsx(path, mode = "w") do xf
         writeresultstables_colocalization(xf, roiresults)
         
         for (r, roichannels) ∈ enumerate(roiresults)
-            for (i, channel) ∈ enumerate(roichannels)
-                writeresultstables_clustering(xf, r, i, channel)
+            if combine_channels
+                writeresultstables_clustering_combined(xf, r, i, channel[1])
+            else
+                for (i, channel) ∈ enumerate(roichannels)
+                    writeresultstables_clustering(xf, r, i, channel)
+                end
             end
         end
         for (r, roichannels) ∈ enumerate(roiresults)
@@ -142,12 +146,12 @@ function writeresultstables_clustering(xf, r, i, channel)
         sheet["J1"] = "Number of localizations in ROI"
         sheet["K1"] = "Fraction of localizations in clusters"
         sheet["L1"] = "Number of localizations per cluster"
-        sheet["M1"] = "Absolute density in clusters (molecules / μm^2)"
-        sheet["N1"] = "Relative density in clusters"
+        # sheet["M1"] = "Absolute density in clusters (molecules / μm^2)"
+        # sheet["N1"] = "Relative density in clusters"
         sheet["O1"] = "Fraction of localizations in significant clusters"
         sheet["P1"] = "Number of localizations per significant cluster"
-        sheet["Q1"] = "Absolute density in significant clusters (molecules / μm^2)"
-        sheet["R1"] = "Relative density in significant clusters"
+        # sheet["Q1"] = "Absolute density in significant clusters (molecules / μm^2)"
+        # sheet["R1"] = "Relative density in significant clusters"
     else
         sheet = xf[i + 1]
     end
@@ -163,13 +167,13 @@ function writeresultstables_clustering(xf, r, i, channel)
     sheet[1 + r, 9] = channel.meansigclustercircularity
     sheet[1 + r, 10] = channel.nlocalizations
     sheet[1 + r, 11] = channel.fraction_clustered
-    sheet[1 + r, 12] = channel.meanclustersize
-    sheet[1 + r, 13] = channel.meanclusterabsolutedensity
+    # sheet[1 + r, 12] = channel.meanclustersize
+    # sheet[1 + r, 13] = channel.meanclusterabsolutedensity
     sheet[1 + r, 14] = channel.meanclusterdensity
     sheet[1 + r, 15] = channel.fraction_sig_clustered
     sheet[1 + r, 16] = channel.meansigclustersize
-    sheet[1 + r, 17] = channel.meansigclusterabsolutedensity
-    sheet[1 + r, 18] = channel.meansigclusterdensity
+    # sheet[1 + r, 17] = channel.meansigclusterabsolutedensity
+    # sheet[1 + r, 18] = channel.meansigclusterdensity
 end
 
 function writeresultstables_clusdoc(xf, r, roichannels, i, channel)

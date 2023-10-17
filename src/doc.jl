@@ -22,8 +22,12 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
             extractcoordinates(l)
         end
     end
-    channels = ChannelResult.(channelnames, coordinates, length.(localizations), roiarea / 1_000_000,
-        length.(localizations) ./ (roiarea / 1_000_000), length(channelnames))
+    roiarea_rescaled = roiarea / 1_000_000
+    nlocalizations = length.(localizations)
+    result = ROIResult(roiarea_rescaled, nlocalizations ./ roiarea_rescaled, channelnames, coordinates, nlocalizations)
+
+    nchannels = length(channelnames)
+    
     #=
     The algorithm for coordinate-based colocalization (doi: 10.1007/s00418-011-0880-5) is:
     1. For each localization, count the number of localizations (other than itself) within a given radius for each channel.
@@ -40,11 +44,13 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
     distrubtion across the ROI.
     =#
 
-    allcoordinates = reduce(hcat, c.coordinates for c ∈ channels)
+    allcoordinates = reduce(hcat, c.coordinates for c ∈ result.pointschannelresults)
     allneighbortree = BallTree(allcoordinates) # original uses KDTree; I timed it and it is worse
     ctrees = BallTree.(c.coordinates for c ∈ channels)
     radiussteps = (1:ceil(radiusmax / radiusstep)) .* radiusstep
-    for (i, c) ∈ enumerate(channels)
+
+    pointsdata = DataFrame[]
+    for (i, c) ∈ enumerate(result.pointschannelresults)
         # determine which localizations have more neighbors than expected by chance
         nneighbors = inrangecount(allneighbortree, c.coordinates, localradius)
         ntotal = size(allcoordinates, 2) - 1 # remove self
@@ -52,8 +58,8 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
         abovethreshold = equivalentradii .> localradius # maybe can replace with simple number threshold though, if don't need to compare across channels
         densities = pointdensity.(nneighbors, localradius)
         # calculate density gradient for each point vs. neighbors in each other channel
-        distributions = Vector(undef, length(channels))
-        for j ∈ eachindex(channels)
+        distributions = Vector(undef, nchannels)
+        for j ∈ eachindex(channelnames)
             k = Int(i == j) # factor to remove self
             dr = [(NearestNeighbors.inrangecount(ctrees[j], (@view c.coordinates[:, abovethreshold]), r) .- k) ./ r ^ 2 for r ∈ radiussteps]
             distributions[j] = hcat((drx ./ dr[end] for drx ∈ dr)...)
@@ -61,9 +67,9 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
 
         # compute degree of colocalization
         # original sets any NaNs to 0. I'm setting them to -1 because "nothing anywhere nearby" is as anticorrelated as it can get.
-        docscores = Vector(undef, length(channels))
-        for j ∈ eachindex(channels)
-            length(channels[j].coordinates) > 0 || continue
+        docscores = Vector(undef, nchannels)
+        for j ∈ eachindex(channelnames)
+            length(result.pointschannelresults[j].coordinates) > 0 || continue
             docscore = fill(NaN, length(abovethreshold))
             spearmancoefficient = [corspearman(distributions[i][k, :], distributions[j][k, :]) for k ∈ 1:count(abovethreshold)]
             _, nearestdistance = nn(ctrees[j], c.coordinates[:, abovethreshold])
@@ -72,10 +78,12 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
             docscores[j] = docscore
         end
 
-        channels[i].pointdata = DataFrame(:abovethreshold => abovethreshold, :density => densities, [Symbol(:docscore, j) => docscores[j] for j ∈ eachindex(channels)]...)
+        channelpointdata = DataFrame(:channel => i, :abovethreshold => abovethreshold, :density => densities, [Symbol(:docscore, j) => docscores[j] for j ∈ eachindex(channels)]...)
+        push!(pointsdata, channelpointdata)
     end
+    result.pointdata = [pointsdata...]
 
-    return channels
+    return result
     # original ends a stopwatch here
 end
 

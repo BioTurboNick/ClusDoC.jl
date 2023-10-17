@@ -1,3 +1,50 @@
+mutable struct ROIResult
+    roiarea::Float64
+    roidensity::Float64
+    
+    clusterdata::Some{DataFrame}
+    pointdata::Some{DataFrame}
+
+    channelnames::Vector{String}
+
+    clusterresults::Vector{ClustersResult}
+    sigclusterresults::Vector{ClustersResult}
+    coclusterresults::Vector{ClustersResult}
+    intermediatecoclusterresults::Vector{ClustersResult}
+
+    pointschannelresults::Vector{PointsChannelResult}
+
+    ChannelResult(roiarea, roidensity, channelnames, coordinates, nlocalizations) =
+        new(roiarea, roidensity, channelnames, ClustersResult[], ClustersResult[], ClustersResult[], ClustersResult[],
+        [PointsChannelResult(c, n, NaN, NaN, NaN) for (c, n) ∈ zip(coordinates, nlocalizations)])
+end
+
+mutable struct ClustersResult
+    nclusters::Int
+    roiclusterdensity::Float64
+    meanclustersize::Float64
+    meanclusterarea::Float64
+    meanclustercircularity::Float64
+
+    channelresults::Vector{ClustersChannelResult}
+end
+
+# Store data specific to a channel within a cluster.
+mutable struct ClustersChannelResult
+    meanclusterabsolutedensity::Float64
+    meanclusterdensity::Float64
+    fraction_clustered::Float64
+end
+
+mutable struct PointsChannelResult
+    coordinates::Matrix{Float64}
+    nlocalizations::Int
+    fraction_colocalized::Float64
+    fraction_interactions_clustered::Float64
+    fraction_interactions_clustered_intermediate::Float64
+end
+
+
 mutable struct ChannelResult
     channelname::String
     coordinates::Matrix{Float64}
@@ -5,26 +52,26 @@ mutable struct ChannelResult
     roiarea::Float64
     roidensity::Float64
     
-    nclusters::Int
-    roiclusterdensity::Float64
-    meanclustersize::Float64
-    meanclusterarea::Float64
-    meanclustercircularity::Float64
-    meanclusterabsolutedensity::Float64
-    meanclusterdensity::Float64
-    fraction_clustered::Float64
+    # nclusters::Int
+    # roiclusterdensity::Float64
+    # meanclustersize::Float64
+    # meanclusterarea::Float64
+    # meanclustercircularity::Float64
+    # meanclusterabsolutedensity::Float64
+    # meanclusterdensity::Float64
+    # fraction_clustered::Float64
 
-    nsigclusters::Int
-    roisigclusterdensity::Float64
-    meansigclustersize::Float64
-    meansigclusterarea::Float64
-    meansigclustercircularity::Float64
-    meansigclusterabsolutedensity::Float64
-    meansigclusterdensity::Float64
-    fraction_sig_clustered::Float64
+    # nsigclusters::Int
+    # roisigclusterdensity::Float64
+    # meansigclustersize::Float64
+    # meansigclusterarea::Float64
+    # meansigclustercircularity::Float64
+    # meansigclusterabsolutedensity::Float64
+    # meansigclusterdensity::Float64
+    # fraction_sig_clustered::Float64
     
-    pointdata::Union{Nothing, DataFrame}
-    clusterdata::Union{Nothing, DataFrame} # ["cluster", "size", "area", "circularity", "contour", "ninteracting", "notherchannels"]
+    # pointdata::Union{Nothing, DataFrame}
+    # clusterdata::Union{Nothing, DataFrame} # ["cluster", "size", "area", "circularity", "contour", "ninteracting", "notherchannels"]
     fraction_colocalized::Vector{Float64}
 
     # cocluster (at least minsigclusterpoints interacting) summary data. Entry where index is the same as this channel contains noncolocalized clusters
