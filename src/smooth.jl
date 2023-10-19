@@ -1,37 +1,30 @@
-function smooth!(cr::Vector{ChannelResult}, clusterparameters, combinechannels)
+function smooth!(result::ROIResult, clusterparameters, combinechannels)
     if combinechannels
-        combined = ChannelResult(
-            "combinedtemp",
-            hcat([c.coordinates for c ∈ cr]...),
-            sum(c.nlocalizations for c ∈ cr),
-            sum(c.roiarea for c ∈ cr),
-            cr[1].roiarea,
-            0)
-        combined.clusterdata = cr[1].clusterdata
-        combined.pointdata = copy(cr[1].pointdata)
-        for c ∈ cr[2:end]
-            append!(combined.pointdata, c.pointdata)
-        end
-        smooth!(combined, clusterparameters[1])
-        for c ∈ cr
-            c.meanclusterarea = combined.meanclusterarea
-            c.meanclustercircularity = combined.meanclustercircularity
-            c.meansigclusterarea = combined.meansigclusterarea
-            c.meansigclustercircularity = combined.meansigclustercircularity
-        end
+        coordinates = hcat(pcr.coordinates for pcr ∈ result.pointschannelresults)
+        coordinates = clusterparameters.uselocalradius_threshold ? coordinates[:, pointdata.abovethreshold] : coordinates
+        smooth!(result.clusterdata, coordinates, result.clusterresults[1], result.sigclusterresults[1], clusterparameters[1])
     else
-        for (i, cc) ∈ enumerate(cr)
-            smooth!(cc, clusterparameters[i])
+        areas = Float64[]
+        circularities = Float64[]
+        contours = []
+        for i ∈ 1:result.nchannels
+            coordinates = result.pointschannelresults[i].coordinates
+            coordinates = clusterparameters.uselocalradius_threshold ? coordinates[:, pointdata.abovethreshold[pointdata.channel .== i]] : coordinates
+            channelclusterdata = filter(x -> x.channel == i, result.clusterdata)
+            area, circularity, contour = smooth!(channelclusterdata, coordinates, result.clusterresults[i], result.sigclusterresults[i], clusterparameters[i])
+            append!(areas, area)
+            append!(circularities, circularity)
+            append!(contours, contour)
         end
+        clusterdata.area = areas
+        clusterdata.circularity = circularities
+        clusterdata.contour = contours
     end
 end
 
-function smooth!(channel::ChannelResult, clusterparameters::ClusterParameters)
-    cc = channel
+function smooth!(clusterdata::DataFrame, coordinates::Matrix{Float64, 2}, clusterresult::ClustersResult, sigclusterresult::ClustersResult, clusterparameters::ClusterParameters)
     sigmas = clusterparameters.smoothingradius
-    cccoordinates = @view cc.coordinates[:, cc.pointdata.abovethreshold]
-    cc.clusterdata !== nothing || return
-    clustercoordinates = [@view cccoordinates[:, union(cluster.core_indices, cluster.boundary_indices)] for cluster ∈ cc.clusterdata.cluster]
+    clustercoordinates = [@view coordinates[:, union(cluster.core_indices, cluster.boundary_indices)] for cluster ∈ clusterdata.cluster]
     is2d = !any(size(clustercoordinates, 1) == 3 && (@view clustercoordinates[3, :]) .!= 0)
     if is2d
         clustercoordinates = [@view cluster[1:2, :] for cluster ∈ clustercoordinates]
@@ -48,9 +41,9 @@ function smooth!(channel::ChannelResult, clusterparameters::ClusterParameters)
     # create the grid
     boxes = [UnitRange.(floor.(bmin), ceil.(bmax)) for (bmin, bmax) ∈ zip(boxmins, boxmaxes)]
 
-    cc.clusterdata.area = Vector{Float64}(undef, length(boxes))
-    cc.clusterdata.circularity = Vector{Float64}(undef, length(boxes))
-    cc.clusterdata.contour = Vector{Any}(undef, length(boxes))
+    area = Vector{Float64}(undef, length(boxes))
+    circularity = Vector{Float64}(undef, length(boxes))
+    contour = Vector{Any}(undef, length(boxes))
     for (ii, box) ∈ enumerate(boxes)
         coords1 = clustercoordinates[ii]
         bincounts = create_histogram(coords1, box)
@@ -60,25 +53,26 @@ function smooth!(channel::ChannelResult, clusterparameters::ClusterParameters)
         # My attempt to keep this dimension-agnostic breaks here; no generic way to do contour/surface? Look into MDBM.jl
 
         contour, contourarea = find_contour(clusimage, box, intensities)
-        cc.clusterdata.area[ii] = contourarea
-        cc.clusterdata.circularity[ii] = calculate_circularity(contourarea, contour)
-        cc.clusterdata.contour[ii] = contour
+        area[ii] = contourarea
+        circularity[ii] = calculate_circularity(contourarea, contour)
+        contour[ii] = contour
     end
     
-    cc.meanclusterarea = mean(cc.clusterdata.area)
-    cc.meanclustercircularity = mean(cc.clusterdata.circularity)
+    clusterresult.meanclusterarea = mean(area)
+    clusterresult.meanclustercircularity = mean(circularity)
 
-    clusterdata_abovecutoff = filter(x -> x.cluster.size > clusterparameters.minsigclusterpoints, cc.clusterdata)
-    cc.meansigclusterarea = mean(clusterdata_abovecutoff.area)
-    cc.meansigclustercircularity = mean(clusterdata_abovecutoff.circularity)
+    sigclusters = findall(x -> x.issignificant, clusterdata)
+    sigclusterresult.meansigclusterarea = mean(area[sigclusters])
+    sigclusterresult.meansigclustercircularity = mean(circularity[sigclusters])
+    return area, circularity, contour
 end
 
 function create_histogram(coords, box)
     # create histogram of the cluster with a resolution of 1 unit
     bincounts = zeros(Int, length.(box)...) # opportunity for sparse matrix? But current base implementation only 2d
-    for k ∈ 1:size(coords, 2)
+    for k ∈ axes(coords, 2)
         binindex = ()
-        for j ∈ 1:length(box)
+        for j ∈ eachindex(box)
             binindex = (binindex..., findfirst(t -> t > coords[j, k], box[j]))
         end
         bincounts[binindex...] += 1

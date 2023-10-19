@@ -49,10 +49,10 @@ clusdoc() = (include(joinpath(sourcedir, "gui.jl")); nothing)
 # profiling - 2300 frame in nearest neighbors `inrange`, 3000 frames in `imfilter`, 200 spent in `rankcorr` (out of 6000)
 # should check out rankcorr, it's the one I haven't tried to optimize at all - checked and it's about minimal
 function clusdoc(channelnames, localizations, roiarea, docparameters::DoCParameters, clusterparameters::Vector{ClusterParameters}, combine_channels_for_clustering = false)
-    cr = doc(channelnames, localizations, docparameters.localradius, docparameters.radiusmax, docparameters.radiusstep, roiarea)
-    dbscan!(cr, clusterparameters, combine_channels_for_clustering)
-    smooth!(cr, clusterparameters, combine_channels_for_clustering)
-    calculate_colocalization_data!(cr, docparameters, clusterparameters, combine_channels_for_clustering)
+    result = doc(channelnames, localizations, docparameters.localradius, docparameters.radiusmax, docparameters.radiusstep, roiarea)
+    dbscan!(result, clusterparameters, combine_channels_for_clustering)
+    smooth!(result, clusterparameters, combine_channels_for_clustering)
+    calculate_colocalization_data!(result, docparameters, clusterparameters, combine_channels_for_clustering)
     return cr
 end
 
@@ -164,16 +164,20 @@ function generate_roi_output(cr, outputfolder, filename, i, chnames, colors)
     generate_doc_histograms(cr, outputfolder, filename, i, chnames, colors)
 end
 
-function calculate_colocalization_data!(cr::Vector{ChannelResult}, docparameters, clusterparameters, combine_channels_for_clustering)
+function calculate_colocalization_data!(result::ROIResult, docparameters, clusterparameters, combine_channels_for_clustering)
     if combine_channels_for_clustering
-        summarize_interaction_data!(cr[1], cr)
+        summarize_interaction_data!(result.clusterdata, pointdata, result.clusterresults[1], result.pointschannelresults)
     else
+        expandedclusterdata = DataFrame[]
+        for (i, channel) ∈ enumerate(cr)
+            channel.clusterdata !== nothing || continue
+            channelclusterdata = filter(x -> x.channel == i, result.clusterdata)
+            summarize_interaction_data!(channelclusterdata, pointdata, result.clusterresults[i], result.pointschannelresults)
+            append!(expandedclusterdata, channelclusterdata)
+        end
+        result.clusterdata = expandedclusterdata
     end
-    for (i, channel) ∈ enumerate(cr)
-        channel.clusterdata !== nothing || continue
-        summarize_interaction_data!(channel, cr)
-    end
-
+    
     for (i, channel) ∈ enumerate(cr)
         all_colocalized_indexes = []
         channel.clusterdata !== nothing || continue
@@ -245,33 +249,42 @@ function calculate_colocalization_data!(cr::Vector{ChannelResult}, docparameters
     ### will underestimate average density by a lot. I should just stick with the actual area, which I'm doing now.
 end
 
-function summarize_interaction_data!(channel::ChannelResult, cr::Vector{ChannelResult})
+function summarize_interaction_data!(clusterdata::DataFrame, pointdata::DataFrame, clustersresult::ClustersResult, pointschannelresults::Vector{PointsChannelResult})
+    nclusters = clustersresult.nclusters
     for (j, channel2) ∈ enumerate(cr)
         # count members of each cluster
+        ch2pointdata = filter(x -> x.channel == j, pointdata)
         ch2countcolumn = Symbol("$(channel2.channelname)count")
         ch2interactingcountcolumn = Symbol("$(channel2.channelname)interactingcount")
         ch2memberscolumn = Symbol("$(channel2.channelname)members")
-        channel.clusterdata[!, ch2countcolumn] = Vector{Int}(undef, channel.nclusters)
-        channel.clusterdata[!, ch2interactingcountcolumn] = Vector{Vector{Int}}(undef, channel.nclusters)
-        channel.clusterdata[!, ch2memberscolumn] = Vector{Vector{Int}}(undef, channel.nclusters)
-        for (ii, cluster) ∈ enumerate(eachrow(channel.clusterdata))
-            inmembers = inpolygon.(eachcol(channel2.coordinates), Ref(cluster.contour)) .!= 0
+        result.clusterdata[!, ch2countcolumn] = Vector{Int}(undef, nclusters)
+        clusterdata[!, ch2interactingcountcolumn] = Vector{Vector{Int}}(undef, nclusters)
+        clusterdata[!, ch2memberscolumn] = Vector{Vector{Int}}(undef, nclusters)
+        for (ii, cluster) ∈ enumerate(eachrow(clusterdata))
+            inmembers = inpolygon.(eachcol(pointschannelresults[j].coordinates), Ref(cluster.contour)) .!= 0
             members = findall(inmembers)
-            channel.clusterdata[ii, ch2memberscolumn] = members
-            ninteracting = [count(channel2.pointdata[!, Symbol(:docscore, k)][members] .> 0.4) for k ∈ eachindex(cr)]
-            channel.clusterdata[ii, ch2interactingcountcolumn] = ninteracting
-            channel.clusterdata[ii, ch2countcolumn] = length(members)
+            clusterdata[ii, ch2memberscolumn] = members
+            ninteracting = [count(ch2pointdata[!, Symbol(:docscore, k)][members] .> 0.4) for k ∈ eachindex(cr)]
+            clusterdata[ii, ch2interactingcountcolumn] = ninteracting
+            clusterdata[ii, ch2countcolumn] = length(members)
         end
-    end
-    for (j, channel2) ∈ enumerate(cr)
-        ch2countcolumn = Symbol("$(channel2.channelname)count")
-        ch2memberscolumn = Symbol("$(channel2.channelname)members")
 
         ch2absolutedensitycolumn = Symbol("$(channel2.channelname)absolutedensity")
-        channel.clusterdata[!, ch2absolutedensitycolumn] = channel.clusterdata[!, ch2countcolumn] ./ (channel.clusterdata.area ./ 1_000_000)
+        clusterdata[!, ch2absolutedensitycolumn] = clusterdata[!, ch2countcolumn] ./ (clusterdata.area ./ 1_000_000)
 
         ch2relativedensitycolumn = Symbol("$(channel2.channelname)density")
-        channel.clusterdata[!, ch2relativedensitycolumn] = [mean(channel2.pointdata.density[channel.clusterdata[i, ch2memberscolumn]]) / (channel.roidensity / 1_000_000) for i ∈ eachindex(eachrow(channel.clusterdata))]
+        clusterdata[!, ch2relativedensitycolumn] = [mean(ch2pointdata.density[clusterdata[i, ch2memberscolumn]]) / (channel.roidensity / 1_000_000) for i ∈ eachindex(eachrow(clusterdata))]
+        
+        docscores21 = pointdata[!, Symbol(:docscore, j)]
+        channel.fraction_interactions_clustered_int[j] = count(>(docparameters.colocalized_threshold), docscores21[incluster]) / count(>(docparameters.colocalized_threshold), docscores21)
+
+        channelresult = ClusterChannelResult(
+            mean(clusterdata[!, ch2countcolumn]),
+            mean(clusterdata[!, ch2absolutedensitycolumn]),
+            mean(clusterdata[!, ch2relativedensitycolumn]), 
+            sum(clusterdata[!, ch2countcolumn]) / pointschannelresults[j].nlocalizations)
+
+        push!(clustersresult.channelresults, channelresult)
     end
 end
 

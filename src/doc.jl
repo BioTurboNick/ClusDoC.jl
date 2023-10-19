@@ -26,8 +26,6 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
     nlocalizations = length.(localizations)
     result = ROIResult(roiarea_rescaled, nlocalizations ./ roiarea_rescaled, channelnames, coordinates, nlocalizations)
 
-    nchannels = length(channelnames)
-    
     #=
     The algorithm for coordinate-based colocalization (doi: 10.1007/s00418-011-0880-5) is:
     1. For each localization, count the number of localizations (other than itself) within a given radius for each channel.
@@ -44,7 +42,7 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
     distrubtion across the ROI.
     =#
 
-    allcoordinates = reduce(hcat, c.coordinates for c ∈ result.pointschannelresults)
+    allcoordinates = reduce(hcat, c.pointschannelresults.coordinates for c ∈ result.pointschannelresults)
     allneighbortree = BallTree(allcoordinates) # original uses KDTree; I timed it and it is worse
     ctrees = BallTree.(c.coordinates for c ∈ channels)
     radiussteps = (1:ceil(radiusmax / radiusstep)) .* radiusstep
@@ -52,16 +50,16 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
     pointsdata = DataFrame[]
     for (i, c) ∈ enumerate(result.pointschannelresults)
         # determine which localizations have more neighbors than expected by chance
-        nneighbors = inrangecount(allneighbortree, c.coordinates, localradius)
+        nneighbors = inrangecount(allneighbortree, c.pointschannelresults.coordinates, localradius)
         ntotal = size(allcoordinates, 2) - 1 # remove self
         equivalentradii = equivalentradius.(nneighbors .- 1, ntotal, roiarea * 1_000_000)
         abovethreshold = equivalentradii .> localradius # maybe can replace with simple number threshold though, if don't need to compare across channels
         densities = pointdensity.(nneighbors, localradius)
         # calculate density gradient for each point vs. neighbors in each other channel
-        distributions = Vector(undef, nchannels)
+        distributions = Vector(undef, result.nchannels)
         for j ∈ eachindex(channelnames)
             k = Int(i == j) # factor to remove self
-            dr = [(NearestNeighbors.inrangecount(ctrees[j], (@view c.coordinates[:, abovethreshold]), r) .- k) ./ r ^ 2 for r ∈ radiussteps]
+            dr = [(NearestNeighbors.inrangecount(ctrees[j], (@view c.pointschannelresults.coordinates[:, abovethreshold]), r) .- k) ./ r ^ 2 for r ∈ radiussteps]
             distributions[j] = hcat((drx ./ dr[end] for drx ∈ dr)...)
         end
 
@@ -72,13 +70,17 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
             length(result.pointschannelresults[j].coordinates) > 0 || continue
             docscore = fill(NaN, length(abovethreshold))
             spearmancoefficient = [corspearman(distributions[i][k, :], distributions[j][k, :]) for k ∈ 1:count(abovethreshold)]
-            _, nearestdistance = nn(ctrees[j], c.coordinates[:, abovethreshold])
+            _, nearestdistance = nn(ctrees[j], c.pointschannelresults.coordinates[:, abovethreshold])
             docscore[abovethreshold] = spearmancoefficient .* exp.(-nearestdistance ./ radiussteps[end])
             docscore[abovethreshold .& isnan.(docscore)] .= -1
             docscores[j] = docscore
         end
 
-        channelpointdata = DataFrame(:channel => i, :abovethreshold => abovethreshold, :density => densities, [Symbol(:docscore, j) => docscores[j] for j ∈ eachindex(channels)]...)
+        channelpointdata = DataFrame(
+            :channel => i,
+            :abovethreshold => abovethreshold,
+            :density => densities,
+            [Symbol(:docscore, j) => docscores[j] for j ∈ eachindex(channels)]...)
         push!(pointsdata, channelpointdata)
     end
     result.pointdata = [pointsdata...]

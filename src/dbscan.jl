@@ -1,54 +1,41 @@
-function dbscan!(channels::ROIResult, clusterparameters, combinechannels)
+function dbscan!(result::ROIResult, clusterparameters, combinechannels)
     if combinechannels
-        combined = ChannelResult(
-            "combinedtemp",
-            hcat([c.coordinates for c ∈ channels]...),
-            sum(c.nlocalizations for c ∈ channels),
-            sum(c.roiarea for c ∈ channels),
-            channels[1].roiarea,
-            0)
-        combined.pointdata = copy(channels[1].pointdata)
-        for c ∈ channels[2:end]
-            append!(combined.pointdata, c.pointdata)
-        end
-        dbscan!(combined, clusterparameters[1])
-
-        for c ∈ channels
-            c.clusterdata = combined.clusterdata
-            c.nclusters = combined.nclusters
-            c.roiclusterdensity = combined.roiclusterdensity
-            c.meanclustersize = combined.meanclustersize
-            c.fraction_clustered = combined.fraction_clustered
-            c.nsigclusters = combined.nsigclusters
-            c.roisigclusterdensity = combined.roisigclusterdensity
-            c.meansigclustersize = combined.meansigclustersize
-            c.fraction_sig_clustered = combined.fraction_sig_clustered
-        end
+        coordinates = hcat(pcr.coordinates for pcr ∈ result.pointschannelresults)
+        coordinates = clusterparameters.uselocalradius_threshold ? coordinates[:, pointdata.abovethreshold] : coordinates
+        clustersresult, sigclustersresult = dbscan!(coordinates, clusterparameters[1], i)
+        push!(result.clusterresults, clustersresult)
+        push!(result.sigclusterresults, sigclustersresult)
     else
-        for (i, c) ∈ enumerate(channels)
-            dbscan!(c, clusterparameters[i])
+        for i ∈ 1:result.nchannels
+            coordinates = result.pointschannelresults[i].coordinates
+            coordinates = clusterparameters.uselocalradius_threshold ? coordinates[:, pointdata.abovethreshold[pointdata.channel .== i]] : coordinates
+            clustersresult, sigclustersresult = dbscan!(coordinates, clusterparameters[i], i)
+            push!(result.clusterresults, clustersresult)
+            push!(result.sigclusterresults, sigclustersresult)
         end
     end
 end
 
-function dbscan!(channel::ChannelResult, clusterparameters)
-    c = channel
-    coordinates = clusterparameters.uselocalradius_threshold ? c.coordinates[:, c.pointdata.abovethreshold] : c.coordinates
+function dbscan!(coordinates::Matrix{Float64, 2}, clusterparameters::ClusterParameters, i::Int)
     length(coordinates) > 0 || return
     clusters = Clustering.dbscan(coordinates, clusterparameters.epsilon, min_cluster_size = clusterparameters.minpoints)
     abovethreshold = map(x -> x.size > clusterparameters.minsigclusterpoints, clusters)
+    issignificant = getfield.(clusters, :size) .> clusterparameters.minsigclusterpoints
+
     c.clusterdata = DataFrame(
+        :channel => i,
         :cluster => clusters,
         :size => [cluster.size for cluster ∈ clusters],
-        :abovethreshold => abovethreshold)
-    c.nclusters = length(clusters)
-    c.roiclusterdensity = c.nclusters / c.roiarea
-    c.meanclustersize = mean(c.clusterdata.size)
-    c.fraction_clustered = sum(c.clusterdata.size) / c.nlocalizations
+        :abovethreshold => abovethreshold,
+        :issignificant => issignificant)
+    
+    nclusters = length(clusters)
+    roiclusterdensity = c.nclusters / c.roiarea
+    #fraction_clustered = sum(c.clusterdata.size) / c.nlocalizations
 
-    clusters_abovethreshold = filter(x -> x.size > clusterparameters.minsigclusterpoints, clusters)
-    c.nsigclusters = length(clusters_abovethreshold)
-    c.roisigclusterdensity = c.nsigclusters / c.roiarea
-    c.meansigclustersize = length(clusters_abovethreshold) == 0 ? NaN : mean(c.size for c ∈ clusters_abovethreshold)
-    c.fraction_sig_clustered = length(clusters_abovethreshold) == 0 ? 0 : sum(c.size for c ∈ clusters_abovethreshold) / c.nlocalizations
+    sigclusters = clusters[issignificant]
+    nsigclusters = length(sigclusters)
+    roisigclusterdensity = c.nsigclusters / c.roiarea
+    #fraction_sig_clustered = length(sigclusters) == 0 ? 0 : sum(c.size for c ∈ clusters_abovethreshold) / c.nlocalizations
+    return ClustersResult(nclusters, roiclusterdensity), ClustersResult(nsigclusters, roisigclusterdensity)
 end
