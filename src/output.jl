@@ -24,11 +24,12 @@ function add_scalebar!(xmin, xmax, ymin, ymax)
     ylims!(annotation_y, ymax)
 end
 
-function generate_localization_maps(cr::Vector{ChannelResult}, outputpath, filename, i, chnames, colors)
+function generate_localization_maps(result::ROIResult, outputpath, filename, i, chnames, colors)
     xmin, xmax = minimum(minimum(c.coordinates[1,:] for c ∈ cr)), maximum(maximum(c.coordinates[1,:] for c ∈ cr))
     ymin, ymax = minimum(minimum(c.coordinates[2,:] for c ∈ cr)), maximum(maximum(c.coordinates[2,:] for c ∈ cr))
-    for j ∈ eachindex(cr)
-        scatter(cr[j].coordinates[1, :], cr[j].coordinates[2, :], markercolor = colors[j], markersize = 4, alpha = 0.5, markerstrokewidth = 0)
+    for j ∈ 1:result.nchannels
+        coordinates = result.pointschannelresults[j].coordinates
+        scatter(coordinates[1, :], coordinates[2, :], markercolor = colors[j], markersize = 4, alpha = 0.5, markerstrokewidth = 0)
         plot!(size=(2048,2048), legend = :none, aspectratio = :equal, axis = false, ticks = false, xlims = (xmin, xmax), ylims = (ymin, ymax))
         add_scalebar!(xmin, xmax, ymin, ymax)
         path = joinpath(outputpath, "localization maps")
@@ -38,14 +39,16 @@ function generate_localization_maps(cr::Vector{ChannelResult}, outputpath, filen
     end
 end
 
-function generate_doc_maps(cr::Vector{ChannelResult}, outputpath, filename, i, chnames)
+function generate_doc_maps(result::ROIResult, outputpath, filename, i, chnames)
     xmin, xmax = minimum(minimum(c.coordinates[1,:] for c ∈ cr)), maximum(maximum(c.coordinates[1,:] for c ∈ cr))
     ymin, ymax = minimum(minimum(c.coordinates[2,:] for c ∈ cr)), maximum(maximum(c.coordinates[2,:] for c ∈ cr))
-    for j ∈ eachindex(cr)
-        for k ∈ eachindex(cr)
+    for j ∈ 1:result.nchannels
+        for k ∈ 1:result.nchannels
             k != j || continue
-            abovethreshold = cr[j].pointdata.abovethreshold
-            scatter(cr[j].coordinates[1, abovethreshold], cr[j].coordinates[2, abovethreshold], markerz = cr[j].pointdata[abovethreshold, Symbol(:docscore, k)], markersize = 4, markerstrokewidth = 0, alpha = 0.5, seriescolor = :balance, clims = (-1, 1), tickfontsize = 24)
+            pointdata = result.pointdata[result.pointdata.channel .== j]
+            coordinates = result.pointschannelresults[j].coordinates
+            abovethreshold = pointdata.abovethreshold
+            scatter(coordinates[1, abovethreshold], coordinates[2, abovethreshold], markerz = cr[j].pointdata[abovethreshold, Symbol(:docscore, k)], markersize = 4, markerstrokewidth = 0, alpha = 0.5, seriescolor = :balance, clims = (-1, 1), tickfontsize = 24)
             plot!(size=(2048,2048), margin = 7Plots.mm, legend = :none, aspectratio = :equal, axis = false, ticks = false, xlims = (xmin, xmax), ylims = (ymin, ymax))
             add_scalebar!(xmin, xmax, ymin, ymax)
             path = joinpath(outputpath, "doc maps")
@@ -56,14 +59,15 @@ function generate_doc_maps(cr::Vector{ChannelResult}, outputpath, filename, i, c
     end
 end
 
-function generate_cluster_maps(cr::Vector{ChannelResult}, outputpath, filename, i, chnames, colors)
+function generate_cluster_maps(result::ROIResult, outputpath, filename, i, chnames, colors)
     xmin, xmax = minimum(minimum(c.coordinates[1,:] for c ∈ cr)), maximum(maximum(c.coordinates[1,:] for c ∈ cr))
     ymin, ymax = minimum(minimum(c.coordinates[2,:] for c ∈ cr)), maximum(maximum(c.coordinates[2,:] for c ∈ cr))
-    for j ∈ eachindex(cr)
+
+    for j ∈ 1:result.nchannels
+        cr = result.pointschannelresults[j]
         scatter(cr[j].coordinates[1, :], cr[j].coordinates[2, :], color = :gray, markersize = 4, alpha = 0.1)
         plot!(size=(2048,2048), legend = :none, aspectratio = :equal, axis = false, ticks = false, xlims = (xmin, xmax), ylims = (ymin, ymax))
-        cr[j].clusterdata !== nothing || continue
-        [plot!(ai, lw = 5, linecolor = colors[j]) for ai in cr[j].clusterdata.contour]
+        [plot!(ai, lw = 5, linecolor = colors[j]) for ai in result.clusterdata.contour[result.clusterdata.channel .== j]]
         add_scalebar!(xmin, xmax, ymin, ymax)
         path = joinpath(outputpath, "cluster maps")
         mkpath(path)
@@ -72,12 +76,13 @@ function generate_cluster_maps(cr::Vector{ChannelResult}, outputpath, filename, 
     end
 end
 
-function generate_doc_histograms(cr::Vector{ChannelResult}, outputpath, filename, i, chnames, colors)
+function generate_doc_histograms(result::ROIResult, outputpath, filename, i, chnames, colors)
     # what to do about huge spike at -1?
-    for j ∈ eachindex(cr)
-        for k ∈ eachindex(cr)
+    for j ∈ 1:result.nchannels
+        for k ∈ 1:result.nchannels
             j != k || continue
-            histogram(cr[j].pointdata[!, Symbol(:docscore, k)], fillcolor = colors[j], bins = 100, xlims = (-1, 1), size = (1024, 256), legend = :none,
+            pointdata = result.pointdata[result.pointdata.channel .== j]
+            histogram(pointdata[!, Symbol(:docscore, k)], fillcolor = colors[j], bins = 100, xlims = (-1, 1), size = (1024, 256), legend = :none,
                 xlabel = "Degree of Colocalization", ylabel = "Frequency", margin = 6Plots.mm, widen = false)
             path = joinpath(outputpath, "doc histograms")
             mkpath(path)
@@ -90,7 +95,7 @@ end
 # XLSX creates a fixable error in the output with NaN values
 replacenan(data) = isnan(data) ? "" : data
 
-function writeresultstables(roiresults::Vector{Vector{ChannelResult}}, docparameters, clusterparameters, path, combine_channels)
+function writeresultstables(roiresults::Vector{ROIResult}, docparameters, clusterparameters, path, combine_channels)
     XLSX.openxlsx(path, mode = "w") do xf
         writeresultstables_colocalization(xf, roiresults)
         

@@ -1,9 +1,40 @@
+
+mutable struct PointsChannelResult
+    coordinates::Matrix{Float64}
+    nlocalizations::Int
+    fraction_colocalized::Float64
+    fraction_clustered::Float64
+end
+
+# Store data specific to a channel within a cluster.
+mutable struct ClustersChannelResult
+    meanclustersize::Float64
+    meanclusterabsolutedensity::Float64
+    meanclusterdensity::Float64
+    fraction_of_interacting_points::Float64
+
+    ClusterChannelResult(meanclustersize, meanclusterabsolutedensity, meanclusterdensity, fraction_clustered) =
+        new(meanclustersize, meanclusterabsolutedensity, meanclusterdensity, fraction_clustered, NaN, NaN)
+end
+
+mutable struct ClustersResult
+    nclusters::Int
+    roiclusterdensity::Float64
+    meanclusterarea::Float64
+    meanclustercircularity::Float64
+
+    channelresults::Vector{ClustersChannelResult}
+
+    ClustersResult(nclusters, roiclusterdensity) =
+        new(nclusters, roiclusterdensity, NaN, NaN, ClustersChannelResult[])
+end
+
 mutable struct ROIResult
     roiarea::Float64
     roidensity::Float64
     
-    clusterdata::Some{DataFrame}
-    pointdata::Some{DataFrame}
+    clusterdata::Union{Nothing, DataFrame}
+    pointdata::Union{Nothing, DataFrame}
 
     nchannels::Int
     channelnames::Vector{String}
@@ -20,35 +51,6 @@ mutable struct ROIResult
         [PointsChannelResult(c, n, NaN, NaN) for (c, n) ∈ zip(coordinates, nlocalizations)])
 end
 
-mutable struct ClustersResult
-    nclusters::Int
-    roiclusterdensity::Float64
-    meanclusterarea::Float64
-    meanclustercircularity::Float64
-
-    channelresults::Vector{ClustersChannelResult}
-
-    ClustersResult(nclusters, roiclusterdensity) =
-        new(nclusters, roiclusterdensity, NaN, NaN, ClustersChannelResult[])
-end
-
-# Store data specific to a channel within a cluster.
-mutable struct ClustersChannelResult
-    meanclustersize::Float64
-    meanclusterabsolutedensity::Float64
-    meanclusterdensity::Float64
-    fraction_of_interacting_points::Float64
-
-    ClusterChannelResult(meanclustersize, meanclusterabsolutedensity, meanclusterdensity, fraction_clustered) =
-        new(meanclustersize, meanclusterabsolutedensity, meanclusterdensity, fraction_clustered, NaN, NaN)
-end
-
-mutable struct PointsChannelResult
-    coordinates::Matrix{Float64}
-    nlocalizations::Int
-    fraction_colocalized::Float64
-    fraction_clustered::Float64
-end
 
 
 # mutable struct ChannelResult

@@ -22,7 +22,7 @@ function smooth!(result::ROIResult, clusterparameters, combinechannels)
     end
 end
 
-function smooth!(clusterdata::DataFrame, coordinates::Matrix{Float64, 2}, clusterresult::ClustersResult, sigclusterresult::ClustersResult, clusterparameters::ClusterParameters)
+function smooth!(clusterdata::DataFrame, coordinates::Matrix{Float64}, clusterresult::ClustersResult, sigclusterresult::ClustersResult, clusterparameters::ClusterParameters)
     sigmas = clusterparameters.smoothingradius
     clustercoordinates = [@view coordinates[:, union(cluster.core_indices, cluster.boundary_indices)] for cluster ∈ clusterdata.cluster]
     is2d = !any(size(clustercoordinates, 1) == 3 && (@view clustercoordinates[3, :]) .!= 0)

@@ -16,7 +16,7 @@ function dbscan!(result::ROIResult, clusterparameters, combinechannels)
     end
 end
 
-function dbscan!(coordinates::Matrix{Float64, 2}, clusterparameters::ClusterParameters, i::Int)
+function dbscan!(coordinates::Matrix{Float64}, clusterparameters::ClusterParameters, i::Int)
     length(coordinates) > 0 || return
     clusters = Clustering.dbscan(coordinates, clusterparameters.epsilon, min_cluster_size = clusterparameters.minpoints)
     abovethreshold = map(x -> x.size > clusterparameters.minsigclusterpoints, clusters)
