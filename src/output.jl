@@ -25,8 +25,8 @@ function add_scalebar!(xmin, xmax, ymin, ymax)
 end
 
 function generate_localization_maps(result::ROIResult, outputpath, filename, i, chnames, colors)
-    xmin, xmax = minimum(minimum(c.coordinates[1,:] for c ∈ cr)), maximum(maximum(c.coordinates[1,:] for c ∈ cr))
-    ymin, ymax = minimum(minimum(c.coordinates[2,:] for c ∈ cr)), maximum(maximum(c.coordinates[2,:] for c ∈ cr))
+    xmin, xmax = minimum(minimum(c.coordinates[1,:] for c ∈ result.pointschannelresults)), maximum(maximum(c.coordinates[1,:] for c ∈ result.pointschannelresults))
+    ymin, ymax = minimum(minimum(c.coordinates[2,:] for c ∈ result.pointschannelresults)), maximum(maximum(c.coordinates[2,:] for c ∈ result.pointschannelresults))
     for j ∈ 1:result.nchannels
         coordinates = result.pointschannelresults[j].coordinates
         scatter(coordinates[1, :], coordinates[2, :], markercolor = colors[j], markersize = 4, alpha = 0.5, markerstrokewidth = 0)
@@ -40,14 +40,14 @@ function generate_localization_maps(result::ROIResult, outputpath, filename, i, 
 end
 
 function generate_doc_maps(result::ROIResult, outputpath, filename, i, chnames)
-    xmin, xmax = minimum(minimum(c.coordinates[1,:] for c ∈ cr)), maximum(maximum(c.coordinates[1,:] for c ∈ cr))
-    ymin, ymax = minimum(minimum(c.coordinates[2,:] for c ∈ cr)), maximum(maximum(c.coordinates[2,:] for c ∈ cr))
+    xmin, xmax = minimum(minimum(c.coordinates[1,:] for c ∈ result.pointschannelresults)), maximum(maximum(c.coordinates[1,:] for c ∈ result.pointschannelresults))
+    ymin, ymax = minimum(minimum(c.coordinates[2,:] for c ∈ result.pointschannelresults)), maximum(maximum(c.coordinates[2,:] for c ∈ result.pointschannelresults))
     for j ∈ 1:result.nchannels
         for k ∈ 1:result.nchannels
             k != j || continue
             channelpointdata = filter(x -> x.channel == j, result.pointdata)
             coordinates = result.pointschannelresults[j].coordinates
-            abovethreshold = pointdata.abovethreshold
+            abovethreshold = channelpointdata.abovethreshold
             scatter(coordinates[1, abovethreshold], coordinates[2, abovethreshold], markerz = channelpointdata[abovethreshold, Symbol(:docscore, k)], markersize = 4, markerstrokewidth = 0, alpha = 0.5, seriescolor = :balance, clims = (-1, 1), tickfontsize = 24)
             plot!(size=(2048,2048), margin = 7Plots.mm, legend = :none, aspectratio = :equal, axis = false, ticks = false, xlims = (xmin, xmax), ylims = (ymin, ymax))
             add_scalebar!(xmin, xmax, ymin, ymax)
@@ -60,12 +60,12 @@ function generate_doc_maps(result::ROIResult, outputpath, filename, i, chnames)
 end
 
 function generate_cluster_maps(result::ROIResult, outputpath, filename, i, chnames, colors)
-    xmin, xmax = minimum(minimum(c.coordinates[1,:] for c ∈ cr)), maximum(maximum(c.coordinates[1,:] for c ∈ cr))
-    ymin, ymax = minimum(minimum(c.coordinates[2,:] for c ∈ cr)), maximum(maximum(c.coordinates[2,:] for c ∈ cr))
+    xmin, xmax = minimum(minimum(c.coordinates[1,:] for c ∈ result.pointschannelresults)), maximum(maximum(c.coordinates[1,:] for c ∈ result.pointschannelresults))
+    ymin, ymax = minimum(minimum(c.coordinates[2,:] for c ∈ result.pointschannelresults)), maximum(maximum(c.coordinates[2,:] for c ∈ result.pointschannelresults))
 
     for j ∈ 1:result.nchannels
         cr = result.pointschannelresults[j]
-        scatter(cr[j].coordinates[1, :], cr[j].coordinates[2, :], color = :gray, markersize = 4, alpha = 0.1)
+        scatter(cr.coordinates[1, :], cr.coordinates[2, :], color = :gray, markersize = 4, alpha = 0.1)
         plot!(size=(2048,2048), legend = :none, aspectratio = :equal, axis = false, ticks = false, xlims = (xmin, xmax), ylims = (ymin, ymax))
         [plot!(ai, lw = 5, linecolor = colors[j]) for ai in result.clusterdata.contour[result.clusterdata.channel .== j]]
         add_scalebar!(xmin, xmax, ymin, ymax)

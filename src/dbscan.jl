@@ -5,7 +5,7 @@ function dbscan!(result::ROIResult, clusterparameters, combinechannels)
         clusterdata, clustersresult, sigclustersresult = dbscan!(result, coordinates, clusterparameters[1], i)
         push!(result.clusterresults, clustersresult)
         push!(result.sigclusterresults, sigclustersresult)
-        result.clusterdata = clustersdata
+        result.clusterdata = [clusterdata]
     else
         clustersdata = DataFrame()
         for i ∈ 1:result.nchannels

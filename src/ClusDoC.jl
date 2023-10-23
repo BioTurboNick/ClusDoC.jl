@@ -53,7 +53,7 @@ function clusdoc(channelnames, localizations, roiarea, docparameters::DoCParamet
     dbscan!(result, clusterparameters, combine_channels_for_clustering)
     smooth!(result, clusterparameters, combine_channels_for_clustering)
     calculate_colocalization_data!(result, docparameters, combine_channels_for_clustering)
-    return cr
+    return result
 end
 
 function clusdoc(inputfiles, rois, localizations, outputfolder, colors = defaultcolors, docparameters = defaultdocparameters, clusterparameters = nothing, output_clusters_to_csv = false, combine_channels_for_clustering = false, update_callback = () -> nothing)
@@ -89,22 +89,15 @@ function clusdoc(inputfiles, rois, localizations, outputfolder, colors = default
             roi_starttime = time_ns()
             roi = [(x, 1 - y) for (x, y) ∈ roi] # invert y to match localization coordinates - but actually I might need to invert the original image instead
             roilocalizations = get_roi_localizations(locs, chnames, roi)
-            cr = clusdoc(chnames, roilocalizations, abs(PolygonOps.area(roi) * scalefactor ^ 2), docparameters, fileclusterparameters, combine_channels_for_clustering)
-            push!(results, cr)
-            generate_roi_output(cr, outputfolder, filename, i, chnames, colors)
+            result = clusdoc(chnames, roilocalizations, abs(PolygonOps.area(roi) * scalefactor ^ 2), docparameters, fileclusterparameters, combine_channels_for_clustering)
+            push!(results, result)
+            generate_roi_output(result, outputfolder, filename, i, chnames, colors)
             roi_endtime = time_ns()
             roi_elapsed_s = (roi_endtime - roi_starttime) / 1_000_000_000
             println("         finished in $roi_elapsed_s s")
             if output_clusters_to_csv
-                if combine_channels_for_clustering
-                    clusterdatacopy = copy(cr[1].clusterdata)[!, Not([:cluster, :contour])]
-                    CSV.write(joinpath(outputfolder, "$filename cluster data.csv"), clusterdatacopy)
-                else
-                    for c ∈ cr
-                        clusterdatacopy = copy(c.clusterdata)[!, Not([:cluster, :contour])]
-                        CSV.write(joinpath(outputfolder, "$filename $(c.channelname) cluster data.csv"), clusterdatacopy)
-                    end
-                end
+                clusterdatacopy = copy(result.clusterdata)[!, Not([:cluster, :contour])]
+                CSV.write(joinpath(outputfolder, "$filename cluster data.csv"), clusterdatacopy)
             end
             update_callback()
         end
@@ -166,12 +159,12 @@ end
 
 function calculate_colocalization_data!(result::ROIResult, docparameters, combine_channels_for_clustering)
     if combine_channels_for_clustering
-        summarize_interaction_data!(result.clusterdata, result.pointdata, result.clusterresults[1], result.pointschannelresults, docparameters, result.channelnames)
+        summarize_interaction_data!(result.clusterdata, result.pointdata, result.clusterresults[1], result.pointschannelresults, docparameters, result.channelnames, 0)
     else
-        expandedclusterdata = DataFrame[]
+        expandedclusterdata = DataFrame()
         for i ∈ 1:result.nchannels
             channelclusterdata = filter(x -> x.channel == i, result.clusterdata)
-            summarize_interaction_data!(channelclusterdata, result.pointdata, result.clusterresults[i], result.pointschannelresults, docparameters, result.channelnames)
+            summarize_interaction_data!(channelclusterdata, result.pointdata, result.clusterresults[i], result.pointschannelresults, docparameters, result.channelnames, i)
             append!(expandedclusterdata, channelclusterdata)
         end
         result.clusterdata = expandedclusterdata
@@ -200,12 +193,14 @@ function summarize_cluster_data!(clusterresult::ClustersResult, clusterdata::Dat
         meanclusterdensity = mean(clusterdata[!, relativedensitycolumn])
         
         if j > 0
-            memberscolumn = Symbol("$(channelnames[k])members")
+            memberscolumn = Symbol("$(channelnames[j])members")
             allclustered = union(clusterdata[!, memberscolumn]...)
             docscores12 = filter(x -> x.channel == j, pointdata)[!, Symbol(:docscore, k)]
             fraction_interactions_clustered12 = count(>(docparameters.colocalized_threshold), docscores12[allclustered]) / pointschannelresults[j].nlocalizations_abovethreshold
+            ch2memberscolumn = Symbol("$(channelnames[k])members")
+            ch2allclustered = union(clusterdata[!, ch2memberscolumn]...)
             docscores21 = filter(x -> x.channel == k, pointdata)[!, Symbol(:docscore, j)]
-            fraction_interactions_clustered21 = count(>(docparameters.colocalized_threshold), docscores21[allclustered]) / pointschannelresults[j].nlocalizations_abovethreshold
+            fraction_interactions_clustered21 = count(>(docparameters.colocalized_threshold), docscores21[ch2allclustered]) / pointschannelresults[j].nlocalizations_abovethreshold
         else
             fraction_interactions_clustered12 = NaN
             fraction_interactions_clustered21 = NaN
@@ -216,9 +211,10 @@ function summarize_cluster_data!(clusterresult::ClustersResult, clusterdata::Dat
     end
 end
 
-function summarize_interaction_data!(clusterdata::DataFrame, pointdata::DataFrame, clustersresult::ClustersResult, pointschannelresults::Vector{PointsChannelResult}, docparameters::DoCParameters, channelnames::Vector{String})
+function summarize_interaction_data!(clusterdata::DataFrame, pointdata::DataFrame, clustersresult::ClustersResult, pointschannelresults::Vector{PointsChannelResult}, docparameters::DoCParameters, channelnames::Vector{String}, i::Int)
     nclusters = clustersresult.nclusters
-    for j ∈ 1:length(channelnames)
+    nchannels = length(channelnames)
+    for j ∈ 1:nchannels
         # count members of each cluster
         ch2pointdata = filter(x -> x.channel == j, pointdata)
         ch2countcolumn = Symbol("$(channelnames[j])count")
@@ -242,21 +238,27 @@ function summarize_interaction_data!(clusterdata::DataFrame, pointdata::DataFram
         ch2relativedensitycolumn = Symbol("$(channelnames[j])density")
         clusterdata[!, ch2relativedensitycolumn] = [mean(ch2pointdata.density[clusterdata[i, ch2memberscolumn]]) / pointschannelresults[j].roidensity for i ∈ eachindex(eachrow(clusterdata))]
         
-        summarize_cluster_data!(clustersresult, clusterdata, pointdata, pointschannelresults, docparameters, channelnames, j)
+        if i != 0
+            allclustered = union(clusterdata[!, ch2memberscolumn]...)
+            allclusteredcount = length(allclustered)
+            pointschannelresults[j].fraction_clustered = allclusteredcount / pointschannelresults[j].nlocalizations_abovethreshold
+            docscores12 = filter(x -> x.channel == i, pointdata)[!, Symbol(:docscore, j)]
+            pointschannelresults[j].fraction_colocalized = count(docscores12 .> docparameters.colocalized_threshold) / pointschannelresults[j].nlocalizations_abovethreshold
+        end
+    end
 
-        allclusteredcount = length(allclustered)
-        result.pointschannelresults[j].fraction_clustered = allclusteredcount / nlocalizations_abovethreshold
-        docscores12 = filter(x -> x.channel == i, pointdata)[!, Symbol(:docscore, j)]
-        result.pointschannelresults[j].fraction_colocalized = count(docscores12 .> docparameters.colocalized_threshold) / nlocalizations_abovethreshold
+    for j ∈ 1:nchannels
+        summarize_cluster_data!(clustersresult, clusterdata, pointdata, pointschannelresults, docparameters, channelnames, j)
     end
 end
 
-function summarize_cocluster_data!(clusterdata::DataFrame, pointdata::DataFrame, pointschannelresults::Vector{PointsChannelResult}, docparameters::DoCParameters, channelnames::Vector{String})
-    for i ∈ 1:result.nchannels
+function summarize_cocluster_data!(clusterdata::DataFrame, pointdata::DataFrame, result::ROIResult, pointschannelresults::Vector{PointsChannelResult}, docparameters::DoCParameters, clusterparameters::ClusterParameters, channelnames::Vector{String})
+    nchannels = length(channelnames)
+    for i ∈ 1:nchannels
         all_colocalized_indexes = []
-        clusterdata_abovecutoff = filter(x -> x.cluster.size > clusterparameters[i].minsigclusterpoints, clusterdata)
+        clusterdata_abovecutoff = filter(x -> x.cluster.size > clusterparameters.minsigclusterpoints, clusterdata)
     
-        interactingcountcolumn = Symbol("$(channel.channelname)interactingcount")
+        interactingcountcolumn = Symbol("$(channelnames[i])interactingcount")
 
         nchannels = length(channelnames)
 
@@ -264,7 +266,7 @@ function summarize_cocluster_data!(clusterdata::DataFrame, pointdata::DataFrame,
         for j ∈ 1:nchannels
             i == j && continue
 
-            colocalized_indexes = findall([c[interactingcountcolumn][j] ≥ clusterparameters[i].minsigclusterpoints for c ∈ eachrow(clusterdata_abovecutoff)])
+            colocalized_indexes = findall([c[interactingcountcolumn][j] ≥ clusterparameters.minsigclusterpoints for c ∈ eachrow(clusterdata_abovecutoff)])
             union!(all_colocalized_indexes, colocalized_indexes)
             ncoclusters = length(colocalized_indexes)
             clusterresult = ClustersResult(ncoclusters, ncoclusters / result.roiarea)
@@ -279,7 +281,7 @@ function summarize_cocluster_data!(clusterdata::DataFrame, pointdata::DataFrame,
         for j ∈ 1:nchannels
             i == j && continue
 
-            colocalized_indexes = findall([0 < c[interactingcountcolumn][j] < clusterparameters[i].minsigclusterpoints for c ∈ eachrow(clusterdata_abovecutoff)])
+            colocalized_indexes = findall([0 < c[interactingcountcolumn][j] < clusterparameters.minsigclusterpoints for c ∈ eachrow(clusterdata_abovecutoff)])
             union!(all_colocalized_indexes, colocalized_indexes)
             nintcoclusters = length(colocalized_indexes)
             clusterresult = ClustersResult(nintcoclusters, nintcoclusters / result.roiarea)
@@ -292,6 +294,7 @@ function summarize_cocluster_data!(clusterdata::DataFrame, pointdata::DataFrame,
         # noncolocalized
         noncolocalized_indexes = setdiff!(findall([length(c.core_indices) ≥ clusterparameters[i].minsigclusterpoints for c ∈ clusterdata_abovecutoff.cluster]), all_colocalized_indexes)
         nnoninteractingclusters = length(noncolocalized_indexes)
+        clusterresult = ClustersResult(nnoninteractingclusters, nnoninteractingclusters / result.roiarea)
         length(all_colocalized_indexes) < length(clusterdata_abovecutoff.cluster) || continue
 
         summarize_cluster_data!(clusterresult, nnoninteractingclusters, pointdata, pointschannelresults, docparameters, channelnames, 0)
