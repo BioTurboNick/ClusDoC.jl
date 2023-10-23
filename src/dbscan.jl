@@ -1,11 +1,11 @@
 function dbscan!(result::ROIResult, clusterparameters, combinechannels)
     if combinechannels
-        coordinates = hcat(pcr.coordinates for pcr ∈ result.pointschannelresults)
-        coordinates = clusterparameters.uselocalradius_threshold ? coordinates[:, result.pointdata.abovethreshold] : coordinates
-        clusterdata, clustersresult, sigclustersresult = dbscan!(result, coordinates, clusterparameters[1], i)
+        coordinates = hcat(collect(pcr.coordinates for pcr ∈ result.pointschannelresults)...)
+        coordinates = clusterparameters[1].uselocalradius_threshold ? coordinates[:, result.pointdata.abovethreshold] : coordinates
+        clusterdata, clustersresult, sigclustersresult = dbscan!(result, coordinates, clusterparameters[1], 0)
         push!(result.clusterresults, clustersresult)
         push!(result.sigclusterresults, sigclustersresult)
-        result.clusterdata = [clusterdata]
+        result.clusterdata = clusterdata
     else
         clustersdata = DataFrame()
         for i ∈ 1:result.nchannels

@@ -1,8 +1,11 @@
 function smooth!(result::ROIResult, clusterparameters, combinechannels)
     if combinechannels
-        coordinates = hcat(pcr.coordinates for pcr ∈ result.pointschannelresults)
-        coordinates = clusterparameters.uselocalradius_threshold ? coordinates[:, result.pointdata.abovethreshold] : coordinates
-        smooth!(result.clusterdata, coordinates, result.clusterresults[1], result.sigclusterresults[1], clusterparameters[1])
+        coordinates = hcat(collect(pcr.coordinates for pcr ∈ result.pointschannelresults)...)
+        coordinates = clusterparameters[1].uselocalradius_threshold ? coordinates[:, result.pointdata.abovethreshold] : coordinates
+        area, circularity, contour = smooth!(result.clusterdata, coordinates, result.clusterresults[1], result.sigclusterresults[1], clusterparameters[1])
+        result.clusterdata.area = area
+        result.clusterdata.circularity = circularity
+        result.clusterdata.contour = contour
     else
         areas = Float64[]
         circularities = Float64[]
