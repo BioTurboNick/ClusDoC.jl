@@ -1,7 +1,7 @@
 function smooth!(result::ROIResult, clusterparameters, combinechannels)
     if combinechannels
         coordinates = hcat(pcr.coordinates for pcr ∈ result.pointschannelresults)
-        coordinates = clusterparameters.uselocalradius_threshold ? coordinates[:, pointdata.abovethreshold] : coordinates
+        coordinates = clusterparameters.uselocalradius_threshold ? coordinates[:, result.pointdata.abovethreshold] : coordinates
         smooth!(result.clusterdata, coordinates, result.clusterresults[1], result.sigclusterresults[1], clusterparameters[1])
     else
         areas = Float64[]
@@ -9,16 +9,17 @@ function smooth!(result::ROIResult, clusterparameters, combinechannels)
         contours = []
         for i ∈ 1:result.nchannels
             coordinates = result.pointschannelresults[i].coordinates
-            coordinates = clusterparameters.uselocalradius_threshold ? coordinates[:, pointdata.abovethreshold[pointdata.channel .== i]] : coordinates
+            channelpointdata = filter(x -> x.channel == i, result.pointdata)
+            coordinates = clusterparameters[i].uselocalradius_threshold ? coordinates[:, channelpointdata.abovethreshold] : coordinates
             channelclusterdata = filter(x -> x.channel == i, result.clusterdata)
             area, circularity, contour = smooth!(channelclusterdata, coordinates, result.clusterresults[i], result.sigclusterresults[i], clusterparameters[i])
             append!(areas, area)
             append!(circularities, circularity)
             append!(contours, contour)
         end
-        clusterdata.area = areas
-        clusterdata.circularity = circularities
-        clusterdata.contour = contours
+        result.clusterdata.area = areas
+        result.clusterdata.circularity = circularities
+        result.clusterdata.contour = contours
     end
 end
 
@@ -41,9 +42,9 @@ function smooth!(clusterdata::DataFrame, coordinates::Matrix{Float64}, clusterre
     # create the grid
     boxes = [UnitRange.(floor.(bmin), ceil.(bmax)) for (bmin, bmax) ∈ zip(boxmins, boxmaxes)]
 
-    area = Vector{Float64}(undef, length(boxes))
-    circularity = Vector{Float64}(undef, length(boxes))
-    contour = Vector{Any}(undef, length(boxes))
+    areas = Vector{Float64}(undef, length(boxes))
+    circularities = Vector{Float64}(undef, length(boxes))
+    contours = Vector{Any}(undef, length(boxes))
     for (ii, box) ∈ enumerate(boxes)
         coords1 = clustercoordinates[ii]
         bincounts = create_histogram(coords1, box)
@@ -53,18 +54,18 @@ function smooth!(clusterdata::DataFrame, coordinates::Matrix{Float64}, clusterre
         # My attempt to keep this dimension-agnostic breaks here; no generic way to do contour/surface? Look into MDBM.jl
 
         contour, contourarea = find_contour(clusimage, box, intensities)
-        area[ii] = contourarea
-        circularity[ii] = calculate_circularity(contourarea, contour)
-        contour[ii] = contour
+        areas[ii] = contourarea
+        circularities[ii] = calculate_circularity(contourarea, contour)
+        contours[ii] = contour
     end
     
-    clusterresult.meanclusterarea = mean(area)
-    clusterresult.meanclustercircularity = mean(circularity)
+    clusterresult.meanclusterarea = mean(areas)
+    clusterresult.meanclustercircularity = mean(circularities)
 
-    sigclusters = findall(x -> x.issignificant, clusterdata)
-    sigclusterresult.meansigclusterarea = mean(area[sigclusters])
-    sigclusterresult.meansigclustercircularity = mean(circularity[sigclusters])
-    return area, circularity, contour
+    sigclusters = findall(clusterdata.issignificant)
+    sigclusterresult.meanclusterarea = mean(areas[sigclusters])
+    sigclusterresult.meanclustercircularity = mean(circularities[sigclusters])
+    return areas, circularities, contours
 end
 
 function create_histogram(coords, box)

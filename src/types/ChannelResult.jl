@@ -2,6 +2,8 @@
 mutable struct PointsChannelResult
     coordinates::Matrix{Float64}
     nlocalizations::Int
+    nlocalizations_abovethreshold::Int
+    roidensity::Float64
     fraction_colocalized::Float64
     fraction_clustered::Float64
 end
@@ -11,10 +13,11 @@ mutable struct ClustersChannelResult
     meanclustersize::Float64
     meanclusterabsolutedensity::Float64
     meanclusterdensity::Float64
-    fraction_of_interacting_points::Float64
+    fraction_of_interacting_points12::Float64
+    fraction_of_interacting_points21::Float64
 
-    ClusterChannelResult(meanclustersize, meanclusterabsolutedensity, meanclusterdensity, fraction_clustered) =
-        new(meanclustersize, meanclusterabsolutedensity, meanclusterdensity, fraction_clustered, NaN, NaN)
+    ClustersChannelResult(meanclustersize, meanclusterabsolutedensity, meanclusterdensity, fraction_clustered12, fraction_clustered21) =
+        new(meanclustersize, meanclusterabsolutedensity, meanclusterdensity, fraction_clustered12, fraction_clustered21)
 end
 
 mutable struct ClustersResult
@@ -31,7 +34,6 @@ end
 
 mutable struct ROIResult
     roiarea::Float64
-    roidensity::Float64
     
     clusterdata::Union{Nothing, DataFrame}
     pointdata::Union{Nothing, DataFrame}
@@ -43,12 +45,13 @@ mutable struct ROIResult
     sigclusterresults::Vector{ClustersResult}
     coclusterresults::Vector{ClustersResult}
     intermediatecoclusterresults::Vector{ClustersResult}
+    noncolocalizedclusterresults::Union{Nothing, ClustersResult}
 
     pointschannelresults::Vector{PointsChannelResult}
 
-    ChannelResult(roiarea, roidensity, channelnames, coordinates, nlocalizations) =
-        new(roiarea, roidensity, length(channelnames), channelnames, ClustersResult[], ClustersResult[], ClustersResult[], ClustersResult[],
-        [PointsChannelResult(c, n, NaN, NaN) for (c, n) ∈ zip(coordinates, nlocalizations)])
+    ROIResult(roiarea, roidensity, channelnames, coordinates, nlocalizations) =
+        new(roiarea, nothing, nothing, length(channelnames), channelnames, ClustersResult[], ClustersResult[], ClustersResult[], ClustersResult[], nothing,
+        [PointsChannelResult(c, n, -1, d, NaN, NaN) for (c, n, d) ∈ zip(coordinates, nlocalizations, roidensity)])
 end
 
 

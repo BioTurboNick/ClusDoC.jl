@@ -45,10 +45,10 @@ function generate_doc_maps(result::ROIResult, outputpath, filename, i, chnames)
     for j ∈ 1:result.nchannels
         for k ∈ 1:result.nchannels
             k != j || continue
-            pointdata = result.pointdata[result.pointdata.channel .== j]
+            channelpointdata = filter(x -> x.channel == j, result.pointdata)
             coordinates = result.pointschannelresults[j].coordinates
             abovethreshold = pointdata.abovethreshold
-            scatter(coordinates[1, abovethreshold], coordinates[2, abovethreshold], markerz = cr[j].pointdata[abovethreshold, Symbol(:docscore, k)], markersize = 4, markerstrokewidth = 0, alpha = 0.5, seriescolor = :balance, clims = (-1, 1), tickfontsize = 24)
+            scatter(coordinates[1, abovethreshold], coordinates[2, abovethreshold], markerz = channelpointdata[abovethreshold, Symbol(:docscore, k)], markersize = 4, markerstrokewidth = 0, alpha = 0.5, seriescolor = :balance, clims = (-1, 1), tickfontsize = 24)
             plot!(size=(2048,2048), margin = 7Plots.mm, legend = :none, aspectratio = :equal, axis = false, ticks = false, xlims = (xmin, xmax), ylims = (ymin, ymax))
             add_scalebar!(xmin, xmax, ymin, ymax)
             path = joinpath(outputpath, "doc maps")
@@ -81,8 +81,8 @@ function generate_doc_histograms(result::ROIResult, outputpath, filename, i, chn
     for j ∈ 1:result.nchannels
         for k ∈ 1:result.nchannels
             j != k || continue
-            pointdata = result.pointdata[result.pointdata.channel .== j]
-            histogram(pointdata[!, Symbol(:docscore, k)], fillcolor = colors[j], bins = 100, xlims = (-1, 1), size = (1024, 256), legend = :none,
+            channelpointdata = filter(x -> x.channel == j, result.pointdata)
+            histogram(channelpointdata[!, Symbol(:docscore, k)], fillcolor = colors[j], bins = 100, xlims = (-1, 1), size = (1024, 256), legend = :none,
                 xlabel = "Degree of Colocalization", ylabel = "Frequency", margin = 6Plots.mm, widen = false)
             path = joinpath(outputpath, "doc histograms")
             mkpath(path)
