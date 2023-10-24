@@ -24,14 +24,12 @@ end
 function dbscan!(result::ROIResult, coordinates::Matrix{Float64}, clusterparameters::ClusterParameters, i::Int)
     length(coordinates) > 0 || return
     clusters = Clustering.dbscan(coordinates, clusterparameters.epsilon, min_cluster_size = clusterparameters.minpoints)
-    abovethreshold = map(x -> x.size > clusterparameters.minsigclusterpoints, clusters)
     issignificant = getfield.(clusters, :size) .> clusterparameters.minsigclusterpoints
 
     clusterdata = DataFrame(
         :channel => i,
         :cluster => clusters,
         :size => [cluster.size for cluster ∈ clusters],
-        :abovethreshold => abovethreshold,
         :issignificant => issignificant)
     
     nclusters = length(clusters)

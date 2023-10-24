@@ -96,7 +96,8 @@ function clusdoc(inputfiles, rois, localizations, outputfolder, colors = default
             roi_elapsed_s = (roi_endtime - roi_starttime) / 1_000_000_000
             println("         finished in $roi_elapsed_s s")
             if output_clusters_to_csv
-                clusterdatacopy = copy(result.clusterdata)[!, Not([:cluster, :contour])]
+                memberscolumns = [Symbol("$(cn)members") for cn ∈ chnames]
+                clusterdatacopy = copy(result.clusterdata)[!, Not([:cluster, :contour, memberscolumns...])]
                 CSV.write(joinpath(outputfolder, "$filename cluster data.csv"), clusterdatacopy)
             end
             update_callback()
@@ -218,17 +219,23 @@ function summarize_interaction_data!(clusterdata::DataFrame, pointdata::DataFram
         # count members of each cluster
         ch2pointdata = filter(x -> x.channel == j, pointdata)
         ch2countcolumn = Symbol("$(channelnames[j])count")
-        ch2interactingcountcolumn = Symbol("$(channelnames[j])interactingcount")
+        ch2interactingcountcolumns = [Symbol("$(channelnames[j])-$(cn)interactingcount") for cn ∈ channelnames]
         ch2memberscolumn = Symbol("$(channelnames[j])members")
         clusterdata[!, ch2countcolumn] = Vector{Int}(undef, nclusters)
-        clusterdata[!, ch2interactingcountcolumn] = Vector{Vector{Int}}(undef, nclusters)
+        for k ∈ 1:nchannels
+            k == j && continue
+            clusterdata[!, ch2interactingcountcolumns[k]] = Vector{Int}(undef, nclusters)
+        end
         clusterdata[!, ch2memberscolumn] = Vector{Vector{Int}}(undef, nclusters)
         for (ii, cluster) ∈ enumerate(eachrow(clusterdata))
             inmembers = inpolygon.(eachcol(pointschannelresults[j].coordinates), Ref(cluster.contour)) .!= 0
             members = findall(inmembers)
             clusterdata[ii, ch2memberscolumn] = members
             ninteracting = [count(ch2pointdata[!, Symbol(:docscore, k)][members] .> docparameters.colocalized_threshold) for k ∈ eachindex(channelnames)]
-            clusterdata[ii, ch2interactingcountcolumn] = ninteracting
+            for k ∈ 1:nchannels
+                k == j && continue
+                clusterdata[ii, ch2interactingcountcolumns[k]] = ninteracting[k]
+            end
             clusterdata[ii, ch2countcolumn] = length(members)
         end
 
