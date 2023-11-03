@@ -5,7 +5,6 @@ mutable struct PointsChannelResult
     nlocalizations_abovethreshold::Int
     roidensity::Float64
     fraction_colocalized::Float64
-    fraction_clustered::Float64
 end
 
 # Store data specific to a channel within a cluster.
@@ -13,11 +12,12 @@ mutable struct ClustersChannelResult
     meanclustersize::Float64
     meanclusterabsolutedensity::Float64
     meanclusterdensity::Float64
+    fraction_clustered::Float64
     fraction_of_interacting_points12::Float64
     fraction_of_interacting_points21::Float64
 
-    ClustersChannelResult(meanclustersize, meanclusterabsolutedensity, meanclusterdensity, fraction_clustered12, fraction_clustered21) =
-        new(meanclustersize, meanclusterabsolutedensity, meanclusterdensity, fraction_clustered12, fraction_clustered21)
+    ClustersChannelResult(meanclustersize, meanclusterabsolutedensity, meanclusterdensity, fraction_clustered, fraction_interacting12, fraction_interacting21) =
+        new(meanclustersize, meanclusterabsolutedensity, meanclusterdensity, fraction_clustered, fraction_interacting12, fraction_interacting21)
 end
 
 mutable struct ClustersResult
@@ -51,7 +51,7 @@ mutable struct ROIResult
 
     ROIResult(roiarea, roidensity, channelnames, coordinates, nlocalizations) =
         new(roiarea, nothing, nothing, length(channelnames), channelnames, ClustersResult[], ClustersResult[], ClustersResult[], ClustersResult[], nothing,
-        [PointsChannelResult(c, n, -1, d, NaN, NaN) for (c, n, d) ∈ zip(coordinates, nlocalizations, roidensity)])
+        [PointsChannelResult(c, n, -1, d, NaN) for (c, n, d) ∈ zip(coordinates, nlocalizations, roidensity)])
 end
 
 

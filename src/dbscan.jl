@@ -34,11 +34,9 @@ function dbscan!(result::ROIResult, coordinates::Matrix{Float64}, clusterparamet
     
     nclusters = length(clusters)
     roiclusterdensity = nclusters / result.roiarea
-    #fraction_clustered = sum(c.clusterdata.size) / c.nlocalizations
 
     sigclusters = clusters[issignificant]
     nsigclusters = length(sigclusters)
     roisigclusterdensity = nsigclusters / result.roiarea
-    #fraction_sig_clustered = length(sigclusters) == 0 ? 0 : sum(c.size for c ∈ clusters_abovethreshold) / c.nlocalizations
     return clusterdata, ClustersResult(nclusters, roiclusterdensity), ClustersResult(nsigclusters, roisigclusterdensity)
 end
