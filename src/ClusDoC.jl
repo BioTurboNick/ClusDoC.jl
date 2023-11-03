@@ -159,6 +159,14 @@ function generate_roi_output(cr, outputfolder, filename, i, chnames, colors)
 end
 
 function calculate_colocalization_data!(result::ROIResult, docparameters, clusterparameters, combine_channels_for_clustering)
+    nchannels = result.nchannels
+    for i ∈ 1:nchannels
+        for j ∈ 1:nchannels
+            docscores12 = filter(x -> x.channel == i, result.pointdata)[!, Symbol(:docscore, j)]
+            result.pointschannelresults[i].fraction_colocalized[j] = count(docscores12 .> docparameters.colocalized_threshold) / result.pointschannelresults[i].nlocalizations_abovethreshold
+        end
+    end
+
     if combine_channels_for_clustering
         summarize_interaction_data!(result.clusterdata, result.pointdata, result.clusterresults[1], result.sigclusterresults[1], result.pointschannelresults, docparameters, result.channelnames, 0)
         summarize_cocluster_data!(result.clusterdata, result.pointdata, result, result.pointschannelresults, docparameters, clusterparameters[1], result.channelnames)
@@ -249,11 +257,6 @@ function summarize_interaction_data!(clusterdata::DataFrame, pointdata::DataFram
 
         ch2relativedensitycolumn = Symbol("$(channelnames[j])density")
         clusterdata[!, ch2relativedensitycolumn] = [calculate_relative_density(pointdata.density[clusterdata[i, ch2memberscolumn]], pointschannelresults[j].roidensity) for i ∈ eachindex(eachrow(clusterdata))]
-        
-        if i != 0
-            docscores12 = filter(x -> x.channel == i, pointdata)[!, Symbol(:docscore, j)]
-            pointschannelresults[j].fraction_colocalized = count(docscores12 .> docparameters.colocalized_threshold) / pointschannelresults[j].nlocalizations_abovethreshold
-        end
     end
 
     for j ∈ 1:nchannels

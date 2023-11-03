@@ -97,16 +97,16 @@ replacenan(data) = isnan(data) ? "" : data
 
 function writeresultstables(roiresults::Vector{ROIResult}, docparameters, clusterparameters, path, combine_channels)
     XLSX.openxlsx(path, mode = "w") do xf
-        #writeresultstables_colocalization(xf, roiresults)
+        writeresultstables_colocalization(xf, roiresults)
         
         for (r, result) ∈ enumerate(roiresults)
-            # if combine_channels
-            #     writeresultstables_clustering_combined(xf, r, i, channel[1])
-            # else
+            if combine_channels
+                writeresultstables_clustering(xf, r, 0, result)
+            else
                 for i ∈ 1:result.nchannels
                     writeresultstables_clustering(xf, r, i, result)
                 end
-            # end
+            end
         end
         for (r, result) ∈ enumerate(roiresults)
             for i ∈ 1:result.nchannels
@@ -119,26 +119,31 @@ function writeresultstables(roiresults::Vector{ROIResult}, docparameters, cluste
 end
 
 function writeresultstables_colocalization(xf, roiresults)
-    # sheet = xf[1]
-    # XLSX.rename!(sheet, "DoC Results")
-    # sheet["A1"] = "Percentage of colocalized molecules"
-    # sheet["A2"] = ["$x -> $y" for x ∈ [cr.channelname for cr ∈ roiresults[1]] for y ∈ [cr.channelname for cr ∈ roiresults[1]] if x != y]
-    # for k ∈ eachindex(roiresults)
-    #     for (i, cr) ∈ enumerate(roiresults[k])
-    #         for j ∈ eachindex(roiresults[k])
-    #             i == j && continue
-    #             sheet[2 + k, 1 + (j - 1) * i] = cr.fraction_colocalized[j]
-    #         end
-    #     end
-    # end
+    sheet = xf[1]
+    XLSX.rename!(sheet, "DoC Results")
+    sheet["A1"] = "Percentage of colocalized molecules"
+    sheet["A2"] = ["$x -> $y" for x ∈ roiresults[1].channelnames for y ∈ roiresults[1].channelnames if x != y]
+    for (k, roiresult) ∈ enumerate(roiresults)
+        for i ∈ 1:roiresult.nchannels
+            for j ∈ 1:roiresult.nchannels
+                i == j && continue
+                sheet[2 + k, 1 + (j - 1) * i] = roiresult.pointschannelresults[i].fraction_colocalized[j]
+            end
+        end
+    end
 end
 
 function writeresultstables_clustering(xf, r, i, result::ROIResult)
     # Clustering results
     if r == 1
         XLSX.addsheet!(xf)
-        sheet = xf[i + 1]
-        XLSX.rename!(sheet, "Clustering Results $(result.channelnames[i])")
+        if i == 0 # combined
+            sheet = xf[2]
+            XLSX.rename!(sheet, "Clustering Results")
+        else
+            sheet = xf[i + 1]
+            XLSX.rename!(sheet, "Clustering Results $(result.channelnames[i])")
+        end
         sheet["A1"] = "ROI area (μm^2)"
         sheet["B1"] = "Number of localizations in ROI"
         sheet["C1"] = "Number of clusters"
@@ -171,8 +176,14 @@ function writeresultstables_clustering(xf, r, i, result::ROIResult)
             col += 4
         end
     else
-        sheet = xf[i + 1]
+        if i == 0 # combined
+            sheet = xf[2]
+        else
+            sheet = xf[i + 1]
+        end
     end
+
+    i = i == 0 ? 1 : i # combined
 
     sheet[1 + r, 1] = result.roiarea
     sheet[1 + r, 2] = result.pointschannelresults[i].nlocalizations

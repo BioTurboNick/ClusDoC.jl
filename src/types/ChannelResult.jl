@@ -4,7 +4,7 @@ mutable struct PointsChannelResult
     nlocalizations::Int
     nlocalizations_abovethreshold::Int
     roidensity::Float64
-    fraction_colocalized::Float64
+    fraction_colocalized::Vector{Float64}
 end
 
 # Store data specific to a channel within a cluster.
@@ -51,7 +51,7 @@ mutable struct ROIResult
 
     ROIResult(roiarea, roidensity, channelnames, coordinates, nlocalizations) =
         new(roiarea, nothing, nothing, length(channelnames), channelnames, ClustersResult[], ClustersResult[], ClustersResult[], ClustersResult[], nothing,
-        [PointsChannelResult(c, n, -1, d, NaN) for (c, n, d) ∈ zip(coordinates, nlocalizations, roidensity)])
+        [PointsChannelResult(c, n, -1, d, fill(NaN, length(channelnames))) for (c, n, d) ∈ zip(coordinates, nlocalizations, roidensity)])
 end
 
 
