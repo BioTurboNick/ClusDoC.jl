@@ -190,7 +190,7 @@ function writeresultstables_clustering(xf, r, i, result::ROIResult)
     i = i == 0 ? 1 : i # combined
 
     sheet[1 + r, 1] = result.roiarea
-    sheet[1 + r, 2] = result.pointschannelresults[i].nlocalizations
+    sheet[1 + r, 2] = result.pointschannelresults[i].nlocalizations_abovethreshold
 
     clusterresult = result.clusterresults[i]
     sheet[1 + r, 3] = clusterresult.nclusters

@@ -24,7 +24,7 @@ function doc(channelnames, localizations, localradius, radiusmax, radiusstep, ro
     end
     roiarea_rescaled = roiarea / 1_000_000
     nlocalizations = length.(localizations)
-    result = ROIResult(roiarea_rescaled, nlocalizations ./ roiarea_rescaled, channelnames, coordinates, nlocalizations)
+    result = ROIResult(roiarea_rescaled, nlocalizations ./ roiarea, channelnames, coordinates, nlocalizations)
 
     #=
     The algorithm for coordinate-based colocalization (doi: 10.1007/s00418-011-0880-5) is:
