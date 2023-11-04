@@ -13,11 +13,10 @@ mutable struct ClustersChannelResult
     meanclusterabsolutedensity::Float64
     meanclusterdensity::Float64
     fraction_clustered::Float64
-    fraction_of_interacting_points12::Float64
-    fraction_of_interacting_points21::Float64
+    fraction_of_interacting_points::Float64
 
-    ClustersChannelResult(meanclustersize, meanclusterabsolutedensity, meanclusterdensity, fraction_clustered, fraction_interacting12, fraction_interacting21) =
-        new(meanclustersize, meanclusterabsolutedensity, meanclusterdensity, fraction_clustered, fraction_interacting12, fraction_interacting21)
+    ClustersChannelResult(meanclustersize, meanclusterabsolutedensity, meanclusterdensity, fraction_clustered, fraction_interacting) =
+        new(meanclustersize, meanclusterabsolutedensity, meanclusterdensity, fraction_clustered, fraction_interacting)
 end
 
 mutable struct ClustersResult
@@ -43,14 +42,14 @@ mutable struct ROIResult
 
     clusterresults::Vector{ClustersResult}
     sigclusterresults::Vector{ClustersResult}
-    coclusterresults::Vector{ClustersResult}
-    intermediatecoclusterresults::Vector{ClustersResult}
-    noncolocalizedclusterresults::Union{Nothing, ClustersResult}
+    coclusterresults::Vector{Vector{ClustersResult}}
+    intermediatecoclusterresults::Vector{Vector{ClustersResult}}
+    noncolocalizedclusterresults::Vector{ClustersResult}
 
     pointschannelresults::Vector{PointsChannelResult}
 
     ROIResult(roiarea, roidensity, channelnames, coordinates, nlocalizations) =
-        new(roiarea, nothing, nothing, length(channelnames), channelnames, ClustersResult[], ClustersResult[], ClustersResult[], ClustersResult[], nothing,
+        new(roiarea, nothing, nothing, length(channelnames), channelnames, ClustersResult[], ClustersResult[], Vector{ClustersResult}[], Vector{ClustersResult}[], ClustersResult[],
         [PointsChannelResult(c, n, -1, d, fill(NaN, length(channelnames))) for (c, n, d) ∈ zip(coordinates, nlocalizations, roidensity)])
 end
 
