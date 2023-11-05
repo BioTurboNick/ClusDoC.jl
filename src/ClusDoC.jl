@@ -172,7 +172,9 @@ function calculate_colocalization_data!(result::ROIResult, docparameters, cluste
         summarize_cluster_data!(result.clusterresults[1], result.clusterdata, result.pointdata, result.pointschannelresults, docparameters, result.channelnames, 0)
         sigclusterdata = filter(x -> x.issignificant, result.clusterdata)
         summarize_cluster_data!(result.sigclusterresults[1], sigclusterdata, result.pointdata, result.pointschannelresults, docparameters, result.channelnames, 0)
-        summarize_cocluster_data!(result.clusterdata, result.pointdata, result, result.pointschannelresults, docparameters, clusterparameters[1], result.channelnames, 0)
+        for i ∈ 1:nchannels
+            summarize_cocluster_data!(sigclusterdata, result.pointdata, result, result.pointschannelresults, docparameters, clusterparameters[1], result.channelnames, i)
+        end
     else
         expandedclusterdata = DataFrame()
         for i ∈ 1:result.nchannels
@@ -181,7 +183,7 @@ function calculate_colocalization_data!(result::ROIResult, docparameters, cluste
             summarize_cluster_data!(result.clusterresults[i], channelclusterdata, result.pointdata, result.pointschannelresults, docparameters, result.channelnames, i)
             sigclusterdata = filter(x -> x.issignificant, channelclusterdata)
             summarize_cluster_data!(result.sigclusterresults[i], sigclusterdata, result.pointdata, result.pointschannelresults, docparameters, result.channelnames, i)
-            summarize_cocluster_data!(channelclusterdata, result.pointdata, result, result.pointschannelresults, docparameters, clusterparameters[i], result.channelnames, i)
+            summarize_cocluster_data!(sigclusterdata, result.pointdata, result, result.pointschannelresults, docparameters, clusterparameters[i], result.channelnames, i)
             append!(expandedclusterdata, channelclusterdata)
         end
         result.clusterdata = expandedclusterdata
@@ -224,7 +226,7 @@ function summarize_cluster_data!(clusterresult::ClustersResult, clusterdata::Dat
             docscores_above_threshold = falses(allclusteredcount)
             for j ∈ 1:nchannels
                 j == k && continue
-                docscores_above_threshold |= channelpointdata[!, Symbol(:docscore, j)][allclustered] .> docparameters.colocalized_threshold
+                docscores_above_threshold .|= channelpointdata[!, Symbol(:docscore, j)][allclustered] .> docparameters.colocalized_threshold
             end
             fraction_interactions_clustered = count(docscores_above_threshold) / pointschannelresults[k].nlocalizations_abovethreshold
         end
@@ -291,7 +293,10 @@ function summarize_cocluster_data!(clusterdata::DataFrame, pointdata::DataFrame,
         ncoclusters = length(colocalized_indexes)
         clusterresult = ClustersResult(ncoclusters, ncoclusters / result.roiarea)
         push!(channelclusterresults, clusterresult)
-        length(colocalized_indexes) > 0 || continue
+        if length(colocalized_indexes) == 0
+            clusterresult.channelresults = fill(ClustersChannelResult(0, 0, 1, 0, 0), nchannels)
+            continue
+        end
 
         coclusterdata = clusterdata_abovecutoff[colocalized_indexes, :]
         summarize_cluster_data!(clusterresult, coclusterdata, pointdata, pointschannelresults, docparameters, channelnames, i)
@@ -310,7 +315,10 @@ function summarize_cocluster_data!(clusterdata::DataFrame, pointdata::DataFrame,
         nintcoclusters = length(colocalized_indexes)
         clusterresult = ClustersResult(nintcoclusters, nintcoclusters / result.roiarea)
         push!(channelclusterresults, clusterresult)
-        length(colocalized_indexes) > 0 || continue
+        if length(colocalized_indexes) == 0
+            clusterresult.channelresults = fill(ClustersChannelResult(0, 0, 1, 0, 0), nchannels)
+            continue
+        end
 
         intcoclusterdata = clusterdata_abovecutoff[colocalized_indexes, :]
         summarize_cluster_data!(clusterresult, intcoclusterdata, pointdata, pointschannelresults, docparameters, channelnames, i)
@@ -322,7 +330,11 @@ function summarize_cocluster_data!(clusterdata::DataFrame, pointdata::DataFrame,
     nnoninteractingclusters = length(noncolocalized_indexes)
     clusterresult = ClustersResult(nnoninteractingclusters, nnoninteractingclusters / result.roiarea)
     push!(result.noncolocalizedclusterresults, clusterresult)
-    length(all_colocalized_indexes) < length(clusterdata_abovecutoff.cluster) || return
+
+    if length(all_colocalized_indexes) ≥ length(clusterdata_abovecutoff.cluster)
+        clusterresult.channelresults = fill(ClustersChannelResult(0, 0, 1, 0, 0), nchannels)
+        return
+    end
 
     nonclusterdata = clusterdata_abovecutoff[noncolocalized_indexes, :]
     summarize_cluster_data!(clusterresult, nonclusterdata, pointdata, pointschannelresults, docparameters, channelnames, i)

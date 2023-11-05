@@ -109,12 +109,8 @@ function writeresultstables(roiresults::Vector{ROIResult}, docparameters, cluste
             end
         end
         for (r, result) ∈ enumerate(roiresults)
-            if combine_channels
-                writeresultstables_clusdoc(xf, r, 0, result)
-            else
-                for i ∈ 1:result.nchannels
-                    writeresultstables_clusdoc(xf, r, i, result)
-                end
+            for i ∈ 1:result.nchannels
+                writeresultstables_clusdoc(xf, r, i, result, combine_channels)
             end
         end
 
@@ -192,14 +188,22 @@ function writeresultstables_clustering(xf, r, i, result::ROIResult)
     sheet[1 + r, 1] = result.roiarea
     sheet[1 + r, 2] = result.pointschannelresults[i].nlocalizations_abovethreshold
 
-    clusterresult = result.clusterresults[i]
-    sheet[1 + r, 3] = clusterresult.nclusters
-    sheet[1 + r, 4] = clusterresult.roiclusterdensity
-    sheet[1 + r, 5] = clusterresult.meanclusterarea
-    sheet[1 + r, 6] = clusterresult.meanclustercircularity    
+    col = 3
+    col = writeresultstables_clustering_set(sheet, result.clusterresults[i], r, col, result.nchannels)
+    writeresultstables_clustering_set(sheet, result.sigclusterresults[i], r, col, result.nchannels)
+end
 
-    col = 7
-    for j ∈ 1:result.nchannels
+function writeresultstables_clustering_headings_set(sheet, clusterresult, r, col, nchannels)
+end
+
+function writeresultstables_clustering_set(sheet, clusterresult, r, col, nchannels)
+    sheet[1 + r, col] = clusterresult.nclusters
+    sheet[1 + r, col + 1] = clusterresult.roiclusterdensity
+    sheet[1 + r, col + 2] = clusterresult.meanclusterarea
+    sheet[1 + r, col + 3] = clusterresult.meanclustercircularity
+    col += 4
+
+    for j ∈ 1:nchannels
         chresult = clusterresult.channelresults[j]
         sheet[1 + r, col] = chresult.fraction_clustered
         sheet[1 + r, col + 1] = chresult.meanclustersize
@@ -208,26 +212,12 @@ function writeresultstables_clustering(xf, r, i, result::ROIResult)
         col += 4
     end
 
-    sigclusterresult = result.sigclusterresults[i]
-    sheet[1 + r, col] = sigclusterresult.nclusters
-    sheet[1 + r, col + 1] = sigclusterresult.roiclusterdensity
-    sheet[1 + r, col + 2] = sigclusterresult.meanclusterarea
-    sheet[1 + r, col + 3] = sigclusterresult.meanclustercircularity
-    col += 4
-
-    for j ∈ 1:result.nchannels
-        chresult = sigclusterresult.channelresults[j]
-        sheet[1 + r, col] = chresult.fraction_clustered
-        sheet[1 + r, col + 1] = chresult.meanclustersize
-        sheet[1 + r, col + 2] = chresult.meanclusterabsolutedensity
-        sheet[1 + r, col + 3] = chresult.meanclusterdensity
-        col += 4
-    end
+    return col
 end
 
-function writeresultstables_clusdoc(xf, r, i, result::ROIResult)
+function writeresultstables_clusdoc(xf, r, i, result::ROIResult, channels_combined)
     clusterinfo_rowlength = 6 + 2 * 5 * result.nchannels
-    sheetoffset = result.nchannels
+    sheetoffset = channels_combined ? 1 : result.nchannels
     # Clustering-colocalization results
     if r == 1
         XLSX.addsheet!(xf)
@@ -275,7 +265,7 @@ function writeresultstables_clusdoc(xf, r, i, result::ROIResult)
                 offset += 5
             end
 
-            sheet[2, offset] = "Intermediate Colocalization with $(result.channelnames[j])"
+            sheet[2, offset] = "Intermediate colocalization with $(result.channelnames[j])"
             sheet[3, offset] = "Number of clusters"
             sheet[3, offset + 1] = "Area (nm^2)"
             sheet[3, offset + 2] = "Circularity"
@@ -293,56 +283,32 @@ function writeresultstables_clusdoc(xf, r, i, result::ROIResult)
         end
 
         offset = baseoffset
-        coclusterresult = result.coclusterresults[i][j]
-        sheet[3 + r, offset] = coclusterresult.nclusters
-        sheet[3 + r, offset + 1] = coclusterresult.meanclusterarea
-        sheet[3 + r, offset + 2] = coclusterresult.meanclustercircularity
-        offset += 3
-
-        for jj ∈ 1:result.nchannels
-            chresult = coclusterresult.channelresults[jj]
-            sheet[3 + r, offset] = chresult.meanclustersize
-            sheet[3 + r, offset + 1] = chresult.meanclusterabsolutedensity
-            sheet[3 + r, offset + 2] = chresult.meanclusterdensity
-            sheet[3 + r, offset + 3] = chresult.fraction_clustered
-            sheet[3 + r, offset + 4] = chresult.fraction_of_interacting_points
-            offset += 5
-        end
-
-        intcoclusterresult = result.intermediatecoclusterresults[i][j]
-        sheet[3 + r, offset] = intcoclusterresult.nclusters
-        sheet[3 + r, offset + 1] = intcoclusterresult.meanclusterarea
-        sheet[3 + r, offset + 2] = intcoclusterresult.meanclustercircularity
-        offset += 3
-
-        for jj ∈ 1:result.nchannels
-            chresult = intcoclusterresult.channelresults[jj]
-            sheet[3 + r, offset] = chresult.meanclustersize
-            sheet[3 + r, offset + 1] = chresult.meanclusterabsolutedensity
-            sheet[3 + r, offset + 2] = chresult.meanclusterdensity
-            sheet[3 + r, offset + 3] = chresult.fraction_clustered
-            sheet[3 + r, offset + 4] = chresult.fraction_of_interacting_points
-            offset += 5
-        end
+        offset = writeresultstables_clusdoc_set(sheet, result.coclusterresults[i][j], r, offset, result.nchannels)
+        writeresultstables_clusdoc_set(sheet, result.intermediatecoclusterresults[i][j], r, offset, result.nchannels)
 
         k += 1
     end
 
-    noncoclusterresult = result.noncolocalizedclusterresults[i]
-    sheet[3 + r, 1] = noncoclusterresult.nclusters
-    sheet[3 + r, 2] = replacenan(noncoclusterresult.meanclusterarea)
-    sheet[3 + r, 3] = replacenan(noncoclusterresult.meanclustercircularity)
-    offset = 4
+    writeresultstables_clusdoc_set(sheet, result.noncolocalizedclusterresults[i], r, 1, result.nchannels)
+end
 
-    for jj ∈ 1:result.nchannels
-        chresult = noncoclusterresult.channelresults[jj]
-        sheet[3 + r, offset] = replacenan(chresult.meanclustersize)
+function writeresultstables_clusdoc_set(sheet, clusterresult, r, offset, nchannels)
+    sheet[3 + r, offset] = clusterresult.nclusters
+    sheet[3 + r, offset + 1] = replacenan(clusterresult.meanclusterarea)
+    sheet[3 + r, offset + 2] = replacenan(clusterresult.meanclustercircularity)
+    offset += 3
+
+    for jj ∈ 1:nchannels
+        chresult = clusterresult.channelresults[jj]
+        sheet[3 + r, offset] = chresult.meanclustersize
         sheet[3 + r, offset + 1] = chresult.meanclusterabsolutedensity
         sheet[3 + r, offset + 2] = chresult.meanclusterdensity
         sheet[3 + r, offset + 3] = chresult.fraction_clustered
         sheet[3 + r, offset + 4] = chresult.fraction_of_interacting_points
         offset += 5
     end
+
+    return offset
 end
 
 function writeresultstables_parameters(xf, chnames, docparameters, clusterparameters)
