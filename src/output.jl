@@ -48,7 +48,7 @@ function generate_doc_maps(result::ROIResult, outputpath, filename, i, chnames)
             channelpointdata = filter(x -> x.channel == j, result.pointdata)
             coordinates = result.pointschannelresults[j].coordinates
             abovethreshold = channelpointdata.abovethreshold
-            scatter(coordinates[1, abovethreshold], coordinates[2, abovethreshold], markerz = channelpointdata[abovethreshold, Symbol(:docscore, k)], markersize = 4, markerstrokewidth = 0, alpha = 0.5, seriescolor = :balance, clims = (-1, 1), tickfontsize = 24)
+            scatter(coordinates[1, abovethreshold], coordinates[2, abovethreshold], markerz = channelpointdata[abovethreshold, Symbol(:docscore, k)], markersize = 4, markerstrokewidth = 0, alpha = 0.5, seriescolor = cgrad(:roma, rev = true), clims = (-1, 1), tickfontsize = 24)
             plot!(size=(2048,2048), margin = 7Plots.mm, legend = :none, aspectratio = :equal, axis = false, ticks = false, xlims = (xmin, xmax), ylims = (ymin, ymax))
             add_scalebar!(xmin, xmax, ymin, ymax)
             path = joinpath(outputpath, "doc maps")
