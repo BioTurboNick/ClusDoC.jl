@@ -1,29 +1,43 @@
-# if channelresult already has abovethreshold set, it'll use that instead of recalculating.
-
-function dbscan!(channels::Vector{ChannelResult}, clusterparameters, localradius)
-    for (i, c) ∈ enumerate(channels)
-        if clusterparameters[i].uselocalradius_threshold && isnothing(c.pointdata.abovethreshold)
-            allcoordinates = reduce(hcat, c.coordinates for c ∈ channels)
-            allneighbortree = BallTree(allcoordinates)
-            nneighbors = inrangecount(allneighbortree, c.coordinates, localradius, true)
-            equivalentradii = equivalentradius.(nneighbors, ntotal, roiarea)
-            c.pointdata.abovethreshold = equivalentradii .> localradius # maybe can replace with simple number threshold though, if don't need to compare across channels
+function dbscan!(result::ROIResult, clusterparameters, combinechannels)
+    if combinechannels
+        coordinates = hcat(collect(pcr.coordinates for pcr ∈ result.pointschannelresults)...)
+        coordinates = clusterparameters[1].uselocalradius_threshold ? coordinates[:, result.pointdata.abovethreshold] : coordinates
+        clusterdata, clustersresult, sigclustersresult = dbscan!(result, coordinates, clusterparameters[1], 0)
+        push!(result.clusterresults, clustersresult)
+        push!(result.sigclusterresults, sigclustersresult)
+        result.clusterdata = clusterdata
+    else
+        clustersdata = DataFrame()
+        for i ∈ 1:result.nchannels
+            coordinates = result.pointschannelresults[i].coordinates
+            channelpointdata = filter(x -> x.channel == i, result.pointdata)
+            coordinates = clusterparameters[i].uselocalradius_threshold ? coordinates[:, channelpointdata.abovethreshold] : coordinates
+            clusterdata, clustersresult, sigclustersresult = dbscan!(result, coordinates, clusterparameters[i], i)
+            append!(clustersdata, clusterdata)
+            push!(result.clusterresults, clustersresult)
+            push!(result.sigclusterresults, sigclustersresult)
         end
-        coordinates = clusterparameters[i].uselocalradius_threshold ? c.coordinates[:, c.pointdata.abovethreshold] : c.coordinates
-        length(coordinates) > 0 || continue
-        clusters = Clustering.dbscan(coordinates, clusterparameters[i].epsilon, min_cluster_size = clusterparameters[i].minpoints)
-        abovethreshold = map(x -> x.size > clusterparameters[i].minsigclusterpoints, clusters)
-        ninteracting = [[count(c.pointdata[!, Symbol(:docscore, j)][cluster.core_indices] .> 0.4) for j ∈ eachindex(channels)] for cluster ∈ clusters]
-        c.clusterdata = DataFrame(:cluster => clusters, :size => [cluster.size for cluster ∈ clusters], :ninteracting => ninteracting, :abovethreshold => abovethreshold)
-        c.nclusters = length(clusters)
-        c.roiclusterdensity = c.nclusters / c.roiarea
-        c.meanclustersize = mean(c.clusterdata.size)
-        c.fraction_clustered = sum(c.clusterdata.size) / c.nlocalizations
-
-        clusters_abovethreshold = filter(x -> x.size > clusterparameters[i].minsigclusterpoints, clusters)
-        c.nsigclusters = length(clusters_abovethreshold)
-        c.roisigclusterdensity = c.nsigclusters / c.roiarea
-        c.meansigclustersize = length(clusters_abovethreshold) == 0 ? NaN : mean(c.size for c ∈ clusters_abovethreshold)
-        c.fraction_sig_clustered = length(clusters_abovethreshold) == 0 ? 0 : sum(c.size for c ∈ clusters_abovethreshold) / c.nlocalizations
+        result.clusterdata = clustersdata
     end
+end
+
+function dbscan!(result::ROIResult, coordinates::Matrix{Float64}, clusterparameters::ClusterParameters, i::Int)
+    length(coordinates) > 0 || return
+    res = Clustering.dbscan(coordinates, clusterparameters.epsilon; min_cluster_size = clusterparameters.minpoints)
+    clusters = res.clusters
+    issignificant = getfield.(clusters, :size) .> clusterparameters.minsigclusterpoints
+
+    clusterdata = DataFrame(
+        :channel => i,
+        :cluster => clusters,
+        :size => [cluster.size for cluster ∈ clusters],
+        :issignificant => issignificant)
+    
+    nclusters = length(clusters)
+    roiclusterdensity = nclusters / result.roiarea
+
+    sigclusters = clusters[issignificant]
+    nsigclusters = length(sigclusters)
+    roisigclusterdensity = nsigclusters / result.roiarea
+    return clusterdata, ClustersResult(nclusters, roiclusterdensity), ClustersResult(nsigclusters, roisigclusterdensity)
 end

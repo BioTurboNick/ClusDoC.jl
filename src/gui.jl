@@ -61,6 +61,9 @@ minsigclusterpointstxt3 = textbox(defaultclusterparameters.minsigclusterpoints; 
 settingsok = button(widget = b["settingsok"])
 settingsreset = button(widget = b["settingsreset"])
 
+clustercombinechannelscheckbox = checkbox(defaultclustercombinechannels; widget = b["clustercombinechannels"])
+outputcsvclustercheckbox = checkbox(defaultoutputcsvclusters; widget = b["outputcsvcluster"])
+
 
 # define event handlers
 function loadfiles(_)
@@ -296,7 +299,7 @@ function run_clusdoc(_)
     roicount = sum((n = length(get(rois[], basename(filename), [])); n == 0 ? 1 : n) for filename ∈ inputfiles[])
     progress = progressbar(0:roicount; widget = b["statusprogress"]) # won't update live unless user enables more than one thread
     @idle_add Gtk.start(b["runspinner"])
-    clusdoc_task = Threads.@spawn clusdoc(inputfiles[], rois[], localizations[], outputfolder[], colors[], docparameters[], clusterparameters[], () -> @idle_add progress[] += 1)
+    clusdoc_task = Threads.@spawn clusdoc(inputfiles[], rois[], localizations[], outputfolder[], colors[], docparameters[], clusterparameters[], outputcsvclustercheckbox[], clustercombinechannelscheckbox[], () -> @idle_add progress[] += 1)
     wait(clusdoc_task)
     @idle_add Gtk.stop(b["runspinner"])
     isrunning[] = false

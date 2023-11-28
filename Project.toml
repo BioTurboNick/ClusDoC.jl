@@ -1,9 +1,10 @@
 name = "ClusDoC"
 uuid = "fcf67ee7-cf45-447c-8b3e-411d14b5161b"
 authors = ["Nicholas Bauer <nicholasbauer@outlook.com>"]
-version = "0.1.1"
+version = "0.3.0"
 
 [deps]
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 Clustering = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
 ColorTypes = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
 Contour = "d38c429a-6771-53c6-b99e-75d170b6e991"
@@ -28,7 +29,7 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 XLSX = "fdbf4ff8-1666-58a4-91e7-1b58723a45e0"
 
 [compat]
-Clustering = "0.14"
+Clustering = "0.15"
 Gtk = "1.2"
 GtkObservables = "1.2.5"
 NearestNeighbors = "0.4.10"

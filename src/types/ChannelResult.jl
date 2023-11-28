@@ -1,41 +1,54 @@
-mutable struct ChannelResult
-    channelname::String
+
+mutable struct PointsChannelResult
     coordinates::Matrix{Float64}
     nlocalizations::Int
-    roiarea::Float64
+    nlocalizations_abovethreshold::Int
     roidensity::Float64
-    
-    nclusters::Int
-    roiclusterdensity::Float64
+    fraction_colocalized::Vector{Float64}
+end
+
+# Store data specific to a channel within a cluster.
+mutable struct ClustersChannelResult
     meanclustersize::Float64
-    meanclusterarea::Float64
-    meanclustercircularity::Float64
     meanclusterabsolutedensity::Float64
     meanclusterdensity::Float64
     fraction_clustered::Float64
+    fraction_of_interacting_points::Float64
 
-    nsigclusters::Int
-    roisigclusterdensity::Float64
-    meansigclustersize::Float64
-    meansigclusterarea::Float64
-    meansigclustercircularity::Float64
-    meansigclusterabsolutedensity::Float64
-    meansigclusterdensity::Float64
-    fraction_sig_clustered::Float64
+    ClustersChannelResult(meanclustersize, meanclusterabsolutedensity, meanclusterdensity, fraction_clustered, fraction_interacting) =
+        new(meanclustersize, meanclusterabsolutedensity, meanclusterdensity, fraction_clustered, fraction_interacting)
+end
+
+mutable struct ClustersResult
+    nclusters::Int
+    roiclusterdensity::Float64
+    meanclusterarea::Float64
+    meanclustercircularity::Float64
+
+    channelresults::Vector{ClustersChannelResult}
+
+    ClustersResult(nclusters, roiclusterdensity) =
+        new(nclusters, roiclusterdensity, NaN, NaN, ClustersChannelResult[])
+end
+
+mutable struct ROIResult
+    roiarea::Float64
     
+    clusterdata::Union{Nothing, DataFrame}
     pointdata::Union{Nothing, DataFrame}
-    clusterdata::Union{Nothing, DataFrame} # ["cluster", "size", "area", "circularity", "contour", "ninteracting", "notherchannels"]
-    fraction_interactions_clustered::Vector{Float64}
 
-    # cocluster summary data. Entry where index is the same as this channel contains noncolocalized clusters
-    meancoclustersize::Vector{Float64}
-    meancoclusterarea::Vector{Float64}
-    meancoclustercircularity::Vector{Float64}
-    meancoclusterdensity::Vector{Float64}
-    ncoclusters::Vector{Int}
-    fraction_colocalized::Vector{Float64}
+    nchannels::Int
+    channelnames::Vector{String}
 
+    clusterresults::Vector{ClustersResult}
+    sigclusterresults::Vector{ClustersResult}
+    coclusterresults::Vector{Vector{ClustersResult}}
+    intermediatecoclusterresults::Vector{Vector{ClustersResult}}
+    noncolocalizedclusterresults::Vector{ClustersResult}
 
-    ChannelResult(a, b, c, d, e, nchannels) = new(a, b, c, d, e, -1, NaN, NaN, NaN, NaN, NaN, NaN, NaN, -1, NaN, NaN, NaN, NaN, NaN, NaN, NaN, nothing, nothing,
-        fill(NaN, nchannels), fill(NaN, nchannels), fill(NaN, nchannels), fill(NaN, nchannels), fill(NaN, nchannels), fill(0, nchannels), fill(NaN, nchannels))
+    pointschannelresults::Vector{PointsChannelResult}
+
+    ROIResult(roiarea, roidensity, channelnames, coordinates, nlocalizations) =
+        new(roiarea, nothing, nothing, length(channelnames), channelnames, ClustersResult[], ClustersResult[], Vector{ClustersResult}[], Vector{ClustersResult}[], ClustersResult[],
+        [PointsChannelResult(c, n, -1, d, fill(NaN, length(channelnames))) for (c, n, d) ∈ zip(coordinates, nlocalizations, roidensity)])
 end
