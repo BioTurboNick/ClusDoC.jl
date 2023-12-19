@@ -18,8 +18,8 @@ using Statistics
 
 export clusdoc, load_raw_results
 
-include("types/ChannelResult.jl")
-include("types/ClusDoCParameters.jl")
+include("types/results.jl")
+include("types/parameters.jl")
 include("doc.jl")
 include("dbscan.jl")
 include("smooth.jl")
