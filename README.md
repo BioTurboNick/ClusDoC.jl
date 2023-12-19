@@ -33,6 +33,7 @@ DoC:
 * Radius Max (nm): When calculating the DoC score for each localization, all points within this radius will be considered.
 * Radius Step (nm): The DoC score examines the localizations located within each band extending out from a localization.
 * Colocalized DoC Limit: Classify localizations as colocalized if DoC exceeds this value.
+
 DBSCAN Clustering:
 * Epsilon (nm): DBSCAN radius, to determine which localizations are neighbors.
 * Min Points: The minimum number of localizations needed to form a cluster.
