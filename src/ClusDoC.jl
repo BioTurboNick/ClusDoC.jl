@@ -1,6 +1,7 @@
 module ClusDoC
 
 using Clustering
+using ColorSchemes
 using Contour
 using CSV
 using DataFrames
@@ -91,7 +92,7 @@ function clusdoc(inputfiles, rois, localizations, outputfolder, colors = default
             roilocalizations = get_roi_localizations(locs, chnames, roi)
             result = clusdoc(chnames, roilocalizations, abs(PolygonOps.area(roi) * scalefactor ^ 2), docparameters, fileclusterparameters, combine_channels_for_clustering)
             push!(results, result)
-            generate_roi_output(result, outputfolder, filename, i, chnames, colors)
+            generate_roi_output(result, outputfolder, filename, i, chnames, colors, docparameters.colocalized_threshold)
             roi_endtime = time_ns()
             roi_elapsed_s = (roi_endtime - roi_starttime) / 1_000_000_000
             println("         finished in $roi_elapsed_s s")
@@ -151,9 +152,9 @@ function get_roi_localizations(locs, chnames, roi)
     return roilocalizations
 end
 
-function generate_roi_output(cr, outputfolder, filename, i, chnames, colors)
+function generate_roi_output(cr, outputfolder, filename, i, chnames, colors, doc_threshold)
     generate_localization_maps(cr, outputfolder, filename, i, chnames, colors)
-    generate_doc_maps(cr, outputfolder, filename, i, chnames)
+    generate_doc_maps(cr, outputfolder, filename, i, chnames, doc_threshold)
     generate_cluster_maps(cr, outputfolder, filename, i, chnames, colors)
     generate_doc_histograms(cr, outputfolder, filename, i, chnames, colors)
 end

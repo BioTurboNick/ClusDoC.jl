@@ -39,16 +39,24 @@ function generate_localization_maps(result::ROIResult, outputpath, filename, i, 
     end
 end
 
-function generate_doc_maps(result::ROIResult, outputpath, filename, i, chnames)
+function generate_doc_maps(result::ROIResult, outputpath, filename, i, chnames, doc_threshold)
     xmin, xmax = minimum(minimum(c.coordinates[1,:] for c ∈ result.pointschannelresults)), maximum(maximum(c.coordinates[1,:] for c ∈ result.pointschannelresults))
     ymin, ymax = minimum(minimum(c.coordinates[2,:] for c ∈ result.pointschannelresults)), maximum(maximum(c.coordinates[2,:] for c ∈ result.pointschannelresults))
+
+    grad_size = Int((1 - doc_threshold) * 100 ÷ 2)
+    inv_grad_size = 100 - 2grad_size
+    reds = range(colorschemes[:roma][0.0], colorant"gray", length = grad_size)
+    grays = range(colorant"gray", colorant"lightgray", length = inv_grad_size)
+    blues = range(colorant"gray", colorschemes[:roma][1.0], length = grad_size)
+    doc_colors = cgrad(ColorScheme(reverse([reds; grays; reverse(grays); blues])))
+
     for j ∈ 1:result.nchannels
         for k ∈ 1:result.nchannels
             k != j || continue
             channelpointdata = filter(x -> x.channel == j, result.pointdata)
             coordinates = result.pointschannelresults[j].coordinates
             abovethreshold = channelpointdata.abovethreshold
-            scatter(coordinates[1, abovethreshold], coordinates[2, abovethreshold], markerz = channelpointdata[abovethreshold, Symbol(:docscore, k)], markersize = 4, markerstrokewidth = 0, alpha = 0.5, seriescolor = cgrad(:roma, rev = true), clims = (-1, 1), tickfontsize = 24)
+            scatter(coordinates[1, abovethreshold], coordinates[2, abovethreshold], markerz = channelpointdata[abovethreshold, Symbol(:docscore, k)], markersize = 4, markerstrokewidth = 0, alpha = 0.5, seriescolor = doc_colors, clims = (-1, 1), tickfontsize = 24)
             plot!(size=(2048,2048), margin = 7Plots.mm, legend = :none, aspectratio = :equal, axis = false, ticks = false, xlims = (xmin, xmax), ylims = (ymin, ymax))
             add_scalebar!(xmin, xmax, ymin, ymax)
             path = joinpath(outputpath, "doc maps")
