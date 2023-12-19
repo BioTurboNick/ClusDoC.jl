@@ -53,20 +53,20 @@ Output
 
 Data Reference
 =================
-DoC Results: Percentage of colocalized molecules for each channel pair
-Clustering Results X: DBSCAN output for clustering channel X, for all clusters and significant clusters (defined by `Min Points/Sig. Cluster` setting)
-Clus-DoC Results X: Colocalization data for signficant clusters in channel X to each other channel. Colocalized clusters are defined by having at least `Min Points/Sig. Cluster` points with DoC scores exceeding `Colocalized DoC Limit`. Noncolocalized clusters have no colocalization, and Intermediate clusters are those with minimal colocalization (below `Min Points/Sig. Cluster`).
-Algorithm parameters: Stores the settings used to create the data.
-Columns:
-* ROI area (μm)
-* Number of clusters
-* Density of clusters (clusters / μm^2)
-* Cluster area (nm^2)
-* Cluster circularity
-* Number of localizations in ROI
-* Fraction of localizations in clusters
-* Absolute density in clusters (localizations / μm^2)
-* Relative density in clusters: A measure of granularity; high indicates the cluster is clumpy, low indicates evenly distributed.
+   - DoC Results: Percentage of colocalized molecules for each channel pair
+   - Clustering Results X: DBSCAN output for clustering channel X, for all clusters and significant clusters (defined by `Min Points/Sig. Cluster` setting)
+   - Clus-DoC Results X: Colocalization data for signficant clusters in channel X to each other channel. Colocalized clusters are defined by having at least `Min Points/Sig. Cluster` points with DoC scores exceeding `Colocalized DoC Limit`. Noncolocalized clusters have no colocalization, and Intermediate clusters are those with minimal colocalization (below `Min Points/Sig. Cluster`).
+   - Algorithm parameters: Stores the settings used to create the data.
+   - Columns:
+       * ROI area (μm)
+       * Number of clusters
+       * Density of clusters (clusters / μm^2)
+       * Cluster area (nm^2)
+       * Cluster circularity
+       * Number of localizations in ROI
+       * Fraction of localizations in clusters
+       * Absolute density in clusters (localizations / μm^2)
+       * Relative density in clusters: A measure of granularity; high indicates the cluster is clumpy, low indicates evenly distributed.
 
 
 *NOTE*: There are some variations in calculations between this version and the MATLAB version. For example, the MATLAB version would use a square ROI area, rather than the computed polygon area. For a more impactful example, the MATLAB version used a separate number of points per cluster cutoff when reporting DBSCAN cluster
