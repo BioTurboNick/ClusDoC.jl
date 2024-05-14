@@ -168,7 +168,7 @@ function load_image(obs)
             visible(b["ch3box"], false)
         end
     catch ex
-        if !(ex isa ArgumentError)
+        if !(ex isa ArgumentError || ex isa KeyError)
             rethrow()
         end
     end
