@@ -75,7 +75,9 @@ function generate_cluster_maps(result::ROIResult, outputpath, filename, i, chnam
         cr = result.pointschannelresults[j]
         scatter(cr.coordinates[1, :], cr.coordinates[2, :], color = :gray, markersize = 4, alpha = 0.1)
         plot!(size=(2048,2048), legend = :none, aspectratio = :equal, axis = false, ticks = false, xlims = (xmin, xmax), ylims = (ymin, ymax))
-        [plot!(ai, lw = 5, linecolor = colors[j]) for ai in result.clusterdata.contour[result.clusterdata.channel .== j]]
+        if !isempty(result.clusterdata)
+            [plot!(ai, lw = 5, linecolor = colors[j]) for ai in result.clusterdata.contour[result.clusterdata.channel .== j]]
+        end
         add_scalebar!(xmin, xmax, ymin, ymax)
         path = joinpath(outputpath, "cluster maps")
         mkpath(path)
@@ -211,13 +213,15 @@ function writeresultstables_clustering_set(sheet, clusterresult, r, col, nchanne
     sheet[1 + r, col + 3] = clusterresult.meanclustercircularity
     col += 4
 
-    for j ∈ 1:nchannels
-        chresult = clusterresult.channelresults[j]
-        sheet[1 + r, col] = chresult.fraction_clustered
-        sheet[1 + r, col + 1] = chresult.meanclustersize
-        sheet[1 + r, col + 2] = chresult.meanclusterabsolutedensity
-        sheet[1 + r, col + 3] = chresult.meanclusterdensity
-        col += 4
+    if !isempty(clusterresult.channelresults)
+        for j ∈ 1:nchannels
+            chresult = clusterresult.channelresults[j]
+            sheet[1 + r, col] = chresult.fraction_clustered
+            sheet[1 + r, col + 1] = chresult.meanclustersize
+            sheet[1 + r, col + 2] = chresult.meanclusterabsolutedensity
+            sheet[1 + r, col + 3] = chresult.meanclusterdensity
+            col += 4
+        end
     end
 
     return col
@@ -291,13 +295,19 @@ function writeresultstables_clusdoc(xf, r, i, result::ROIResult, channels_combin
         end
 
         offset = baseoffset
-        offset = writeresultstables_clusdoc_set(sheet, result.coclusterresults[i][j], r, offset, result.nchannels)
-        writeresultstables_clusdoc_set(sheet, result.intermediatecoclusterresults[i][j], r, offset, result.nchannels)
+        if !isempty(result.coclusterresults) && !isempty(result.coclusterresults[i])
+            offset = writeresultstables_clusdoc_set(sheet, result.coclusterresults[i][j], r, offset, result.nchannels)
+        end
+        if !isempty(result.intermediatecoclusterresults) && !isempty(result.intermediatecoclusterresults[i])
+            writeresultstables_clusdoc_set(sheet, result.intermediatecoclusterresults[i][j], r, offset, result.nchannels)
+        end
 
         k += 1
     end
 
-    writeresultstables_clusdoc_set(sheet, result.noncolocalizedclusterresults[i], r, 1, result.nchannels)
+    if !isempty(result.noncolocalizedclusterresults)
+        writeresultstables_clusdoc_set(sheet, result.noncolocalizedclusterresults[i], r, 1, result.nchannels)
+    end
 end
 
 function writeresultstables_clusdoc_set(sheet, clusterresult, r, offset, nchannels)

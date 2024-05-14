@@ -170,22 +170,30 @@ function calculate_colocalization_data!(result::ROIResult, docparameters, cluste
 
     if combine_channels_for_clustering
         summarize_interaction_data!(result.clusterdata, result.pointdata, result.clusterresults[1].nclusters, result.pointschannelresults, docparameters, result.channelnames)
-        summarize_cluster_data!(result.clusterresults[1], result.clusterdata, result.pointdata, result.pointschannelresults, docparameters, result.channelnames, 0)
-        sigclusterdata = filter(x -> x.issignificant, result.clusterdata)
-        summarize_cluster_data!(result.sigclusterresults[1], sigclusterdata, result.pointdata, result.pointschannelresults, docparameters, result.channelnames, 0)
-        for i ∈ 1:nchannels
-            summarize_cocluster_data!(sigclusterdata, result.pointdata, result, result.pointschannelresults, docparameters, clusterparameters[1], result.channelnames, i)
+        if !isempty(result.clusterdata)
+            summarize_cluster_data!(result.clusterresults[1], result.clusterdata, result.pointdata, result.pointschannelresults, docparameters, result.channelnames, 0)
+            sigclusterdata = filter(x -> x.issignificant, result.clusterdata)
+            if !isempty(sigclusterdata)
+                summarize_cluster_data!(result.sigclusterresults[1], sigclusterdata, result.pointdata, result.pointschannelresults, docparameters, result.channelnames, 0)
+                for i ∈ 1:nchannels
+                    summarize_cocluster_data!(sigclusterdata, result.pointdata, result, result.pointschannelresults, docparameters, clusterparameters[1], result.channelnames, i)
+                end
+            end
         end
     else
         expandedclusterdata = DataFrame()
         for i ∈ 1:result.nchannels
             channelclusterdata = filter(x -> x.channel == i, result.clusterdata)
             summarize_interaction_data!(channelclusterdata, result.pointdata, result.clusterresults[i].nclusters, result.pointschannelresults, docparameters, result.channelnames)
-            summarize_cluster_data!(result.clusterresults[i], channelclusterdata, result.pointdata, result.pointschannelresults, docparameters, result.channelnames, i)
-            sigclusterdata = filter(x -> x.issignificant, channelclusterdata)
-            summarize_cluster_data!(result.sigclusterresults[i], sigclusterdata, result.pointdata, result.pointschannelresults, docparameters, result.channelnames, i)
-            summarize_cocluster_data!(sigclusterdata, result.pointdata, result, result.pointschannelresults, docparameters, clusterparameters[i], result.channelnames, i)
-            append!(expandedclusterdata, channelclusterdata)
+            if !isempty(channelclusterdata)
+                summarize_cluster_data!(result.clusterresults[i], channelclusterdata, result.pointdata, result.pointschannelresults, docparameters, result.channelnames, i)
+                sigclusterdata = filter(x -> x.issignificant, channelclusterdata)
+                if !isempty(sigclusterdata)
+                    summarize_cluster_data!(result.sigclusterresults[i], sigclusterdata, result.pointdata, result.pointschannelresults, docparameters, result.channelnames, i)
+                    summarize_cocluster_data!(sigclusterdata, result.pointdata, result, result.pointschannelresults, docparameters, clusterparameters[i], result.channelnames, i)
+                    append!(expandedclusterdata, channelclusterdata)
+                end
+            end
         end
         result.clusterdata = expandedclusterdata
     end
