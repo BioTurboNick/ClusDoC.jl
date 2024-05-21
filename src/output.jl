@@ -316,14 +316,16 @@ function writeresultstables_clusdoc_set(sheet, clusterresult, r, offset, nchanne
     sheet[3 + r, offset + 2] = replacenan(clusterresult.meanclustercircularity)
     offset += 3
 
-    for jj ∈ 1:nchannels
-        chresult = clusterresult.channelresults[jj]
-        sheet[3 + r, offset] = chresult.meanclustersize
-        sheet[3 + r, offset + 1] = chresult.meanclusterabsolutedensity
-        sheet[3 + r, offset + 2] = chresult.meanclusterdensity
-        sheet[3 + r, offset + 3] = chresult.fraction_clustered
-        sheet[3 + r, offset + 4] = chresult.fraction_of_interacting_points
-        offset += 5
+    if !isempty(clusterresult.channelresults)
+        for jj ∈ 1:nchannels
+            chresult = clusterresult.channelresults[jj]
+            sheet[3 + r, offset] = chresult.meanclustersize
+            sheet[3 + r, offset + 1] = chresult.meanclusterabsolutedensity
+            sheet[3 + r, offset + 2] = chresult.meanclusterdensity
+            sheet[3 + r, offset + 3] = chresult.fraction_clustered
+            sheet[3 + r, offset + 4] = chresult.fraction_of_interacting_points
+            offset += 5
+        end
     end
 
     return offset

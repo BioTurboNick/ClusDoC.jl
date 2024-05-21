@@ -192,7 +192,15 @@ function calculate_colocalization_data!(result::ROIResult, docparameters, cluste
                     summarize_cluster_data!(result.sigclusterresults[i], sigclusterdata, result.pointdata, result.pointschannelresults, docparameters, result.channelnames, i)
                     summarize_cocluster_data!(sigclusterdata, result.pointdata, result, result.pointschannelresults, docparameters, clusterparameters[i], result.channelnames, i)
                     append!(expandedclusterdata, channelclusterdata)
+                else
+                    push!(result.coclusterresults, ClustersResult[])
+                    push!(result.intermediatecoclusterresults, ClustersResult[])
+                    push!(result.noncolocalizedclusterresults, ClustersResult(0, NaN))
                 end
+            else
+                push!(result.coclusterresults, ClustersResult[])
+                push!(result.intermediatecoclusterresults, ClustersResult[])
+                push!(result.noncolocalizedclusterresults, ClustersResult(0, NaN))
             end
         end
         result.clusterdata = expandedclusterdata
