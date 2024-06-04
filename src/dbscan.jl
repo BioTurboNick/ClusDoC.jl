@@ -1,3 +1,25 @@
+
+# Overwrite Clustering method to remove error when there are few points.
+function Clustering.dbscan(points::AbstractMatrix, radius::Real; metric = Clustering.Euclidean(), min_neighbors::Integer = 1, min_cluster_size::Integer = 1, nntree_kwargs...)
+    0 <= radius || throw(ArgumentError("radius $radius must be ≥ 0"))                                                  
+
+    if metric !== nothing
+        # points are point coordinates
+        dim, num_points = size(points)
+        #num_points <= dim && throw(ArgumentError("points has $dim rows and $num_points columns. Must be a D x N matric with D < N"))
+        kdtree = Clustering.KDTree(points, metric; nntree_kwargs...)
+        data = (kdtree, points)
+    else
+        # points is a distance matrix
+        num_points = size(points, 1)
+        size(points, 2) == num_points || throw(ArgumentError("When metric=nothing, points must be a square distance matrix ($(size(points)) given)."))
+        num_points >= 2 || throw(ArgumentError("At least two data points are required ($num_points given)."))
+        data = points
+    end
+    clusters = Clustering._dbscan(data, num_points, radius, min_neighbors, min_cluster_size)
+    return Clustering.DbscanResult(clusters, num_points)
+end
+
 function dbscan!(result::ROIResult, clusterparameters, combinechannels)
     if combinechannels
         coordinates = hcat(collect(pcr.coordinates for pcr ∈ result.pointschannelresults)...)
