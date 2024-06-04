@@ -1,7 +1,7 @@
 name = "ClusDoC"
 uuid = "fcf67ee7-cf45-447c-8b3e-411d14b5161b"
 authors = ["Nicholas Bauer <nicholasbauer@outlook.com>"]
-version = "0.3.2"
+version = "0.3.3"
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
