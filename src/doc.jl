@@ -111,7 +111,7 @@ were evenly distributed across the ROI.
 """
 function equivalentradius(nneighbors::Int, ntotal::Int, roiarea) #Lr
     0 < ntotal ||
-        throw(ArgumentError("$(:ntotal) must be positive; got $notal"))
+        throw(ArgumentError("$(:ntotal) must be positive; got $ntotal"))
     0 ≤ nneighbors ≤ ntotal ||
         throw(ArgumentError("$(:nneighbors) and $(:ntotal) must be greater than or equal to zero, and $(:ntotal) must be greater than or equal to $(:nneighbors); got $nneighbors, $ntotal"))
     roiarea > 0 ||
