@@ -57,6 +57,17 @@ function clusdoc(channelnames, localizations, roiarea, docparameters::DoCParamet
     return result
 end
 
+#=
+
+(0.004, 0.002),
+(0.994, 0.228),
+(0.008, 0.438),
+(0.982, 0.71),
+(0.018000000000000002, 0.984),
+(0.004, 0.002)
+
+=#
+
 function clusdoc(inputfiles, rois, localizations, outputfolder, colors = defaultcolors, docparameters = defaultdocparameters, clusterparameters = nothing, output_clusters_to_csv = false, combine_channels_for_clustering = false, update_callback = () -> nothing)
     isempty(rois) && return
     println("Starting ClusDoC")
@@ -83,7 +94,7 @@ function clusdoc(inputfiles, rois, localizations, outputfolder, colors = default
             filerois = []
         end
 
-        scalefactor = get_scale_factor(locs)
+        scalefactor, _ = get_scale_factor_and_offsets(locs)
 
         for (i, roi) ∈ enumerate(filerois)
             println("    ROI $i")
@@ -134,19 +145,26 @@ function get_bounds(locs)
     return (xmin, xmax), (ymin, ymax)
 end
 
-function get_scale_factor(locs)
+function get_scale_factor_and_offsets(locs)
     # scale factor to map the relative line positions and the image coordinates
     (xmin, xmax), (ymin, ymax) = get_bounds(locs)
-    return max(xmax - xmin, ymax - ymin)
+    xwidth = xmax - xmin
+    ywidth = ymax - ymin
+    scalefactor = max(xwidth, ywidth)
+    xoffset = xwidth < ywidth ? (ywidth - xwidth) / 2 : 0
+    yoffset = ywidth < xwidth ? (xwidth - ywidth) / 2 : 0
+
+    # yes, these are reversed
+    return scalefactor, [yoffset / scalefactor, xoffset / scalefactor, 0.0]
 end
 
 function get_roi_localizations(locs, chnames, roi)
     roilocalizations = Vector{Vector{Localization}}()
-    scalefactor = get_scale_factor(locs)
+    scalefactor, offsets = get_scale_factor_and_offsets(locs)
 
     for chname ∈ chnames
         coords = extractcoordinates(locs[chname])
-        roichlocalizationsmask = inpolygon.(eachcol(coords ./ scalefactor), Ref(roi)) .!= 0
+        roichlocalizationsmask = inpolygon.(eachcol(coords ./ scalefactor .- offsets), Ref(roi)) .!= 0
         push!(roilocalizations, locs[chname][roichlocalizationsmask])
     end
     return roilocalizations
