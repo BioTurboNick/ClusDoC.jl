@@ -151,13 +151,13 @@ function get_scale_factor_and_offsets(locs)
     xwidth = xmax - xmin
     ywidth = ymax - ymin
     scalefactor = max(xwidth, ywidth)
-    xoffset = xwidth < ywidth ? (ywidth - xwidth) / 2 : 0
-    xoffset -= xmin
-    yoffset = ywidth < xwidth ? (xwidth - ywidth) / 2 : 0
-    yoffset -= ymin
+    yoffset = ymin - max((xwidth - ywidth) / 2, 0)
+    xoffset = xmin - max((ywidth - xwidth) / 2, 0)
+
+    @info xmin xmax ymin ymax scalefactor
 
     # yes, these are reversed
-    return scalefactor, [yoffset / scalefactor, xoffset / scalefactor, 0.0]
+    return scalefactor, [xoffset / scalefactor, yoffset / scalefactor, 0.0]
 end
 
 function get_roi_localizations(locs, chnames, roi)
