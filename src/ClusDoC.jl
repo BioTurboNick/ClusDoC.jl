@@ -156,7 +156,6 @@ function get_scale_factor_and_offsets(locs)
 
     @info xmin xmax ymin ymax scalefactor
 
-    # yes, these are reversed
     return scalefactor, [xoffset / scalefactor, yoffset / scalefactor, 0.0]
 end
 
